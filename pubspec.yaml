@@ -1,0 +1,59 @@
+name: fridge_expert
+description: A new Flutter project.
+version: 1.0.0+1
+environment: 
+  sdk: ^3.9.0
+dependencies: 
+  flutter:   # 🚨 CRITICAL: Required for every Flutter project - DO NOT REMOVE
+    sdk: flutter # 🚨 CRITICAL: Required for every Flutter project - DO NOT REMOVE
+  flutter_localizations: 
+    sdk: flutter
+  flutter_svg: ^2.0.12
+  cached_network_image: ^3.4.1
+  shared_preferences: ^2.3.3
+  connectivity_plus: ^6.1.0
+  gradient_borders: ^1.0.2
+  web: any
+  universal_html: ^2.2.4
+  http: ^1.6.0
+dev_dependencies: 
+  flutter_test:    # 🚨 CRITICAL: Required for Flutter project testing - DO NOT REMOVE
+    sdk: flutter    # 🚨 CRITICAL: Required for Flutter project testing - DO NOT REMOVE
+  flutter_lints: ^5.0.0
+flutter: 
+  uses-material-design: true # 🚨 CRITICAL: Required for Material icon font - DO NOT REMOVE
+  assets: 
+    - assets/
+    - assets/images/
+  fonts: 
+    - family: Urbanist
+      fonts: 
+        - asset: assets/fonts/UrbanistRomanBold.ttf
+          weight: 700
+    - family: Inter
+      fonts: 
+        - asset: assets/fonts/InterRegular.ttf
+          weight: 400
+        - asset: assets/fonts/InterMedium.ttf
+          weight: 500
+    - family: Noto Sans KR
+      fonts: 
+        - asset: assets/fonts/NotoSansKRMedium.ttf
+          weight: 500
+    - family: Tmoney RoundWind
+      fonts:
+        - asset: assets/fonts/TmoneyRoundWind.ttf
+          weight: 500
+    - family: NanumSquare ac
+      fonts:
+        - asset: assets/fonts/NanumSquare_ac.ttf
+          weight: 500
+
+
+  # 🚨 CRITICAL ASSET MANAGEMENT RULES:
+  # - DO NOT ADD NEW ASSET DIRECTORIES (assets/svg/, assets/icons/, etc.)
+  # - ONLY USE EXISTING AND ITEMS AVAILABLE IN THE DIRECTORIES LISTED ABOVE (assets/, assets/images/)
+
+  # 🚨 CRITICAL FONTS RULE:
+  # - DO NOT ADD NEW LOCAL FONTS TO assets/fonts/ 
+  # - ONLY USE EXISTING LOCAL FONTS FROM assets/fonts/

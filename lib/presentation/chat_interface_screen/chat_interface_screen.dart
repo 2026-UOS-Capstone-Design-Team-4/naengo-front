@@ -1,0 +1,514 @@
+import 'package:flutter/material.dart';
+
+import '../../core/app_export.dart';
+import '../../services/api_service.dart';
+import '../../widgets/custom_image_view.dart';
+import '../recipe_management_screen/recipe_management_screen.dart';
+
+class ChatInterfaceScreen extends StatefulWidget {
+  const ChatInterfaceScreen({super.key});
+
+  @override
+  State<ChatInterfaceScreen> createState() => _ChatInterfaceScreenState();
+}
+
+class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
+    with SingleTickerProviderStateMixin {
+  final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final FocusNode _focusNode = FocusNode();
+
+  // Animation controller for the side panel
+  late AnimationController _panelAnimationController;
+  late Animation<Offset> _panelSlideAnimation;
+  late Animation<double> _overlayFadeAnimation;
+
+  bool _isPanelOpen = false;
+  bool _isLoading = false;
+  bool _initialMessageSent = false;
+
+  // Start with empty messages
+  final List<_ChatMessage> _messages = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _panelAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    );
+    _panelSlideAnimation =
+        Tween<Offset>(begin: const Offset(-1.0, 0.0), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _panelAnimationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
+    _overlayFadeAnimation = Tween<double>(begin: 0.0, end: 0.5).animate(
+      CurvedAnimation(parent: _panelAnimationController, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialMessageSent) {
+      _initialMessageSent = true;
+      final initialMessage =
+          ModalRoute.of(context)?.settings.arguments as String?;
+      if (initialMessage != null && initialMessage.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _sendInitialMessage(initialMessage);
+        });
+      }
+    }
+  }
+
+  void _openPanel() {
+    setState(() => _isPanelOpen = true);
+    _panelAnimationController.forward();
+  }
+
+  void _closePanel() {
+    _panelAnimationController.reverse().then((_) {
+      setState(() => _isPanelOpen = false);
+    });
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty || _isLoading) return;
+
+    setState(() {
+      _messages.add(_ChatMessage(text: text, isMe: true));
+      _isLoading = true;
+    });
+    _messageController.clear();
+    _scrollToBottom();
+
+    try {
+      final reply = await ApiService.sendMessage(text);
+      if (!mounted) return;
+      setState(() {
+        _messages.add(_ChatMessage(text: reply, isMe: false));
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _messages.add(
+          _ChatMessage(text: '오류가 발생했습니다. 다시 시도해주세요.', isMe: false),
+        );
+        _isLoading = false;
+      });
+    }
+    _scrollToBottom();
+  }
+
+  Future<void> _sendInitialMessage(String text) async {
+    setState(() {
+      _messages.add(_ChatMessage(text: text, isMe: true));
+      _isLoading = true;
+    });
+    _scrollToBottom();
+
+    try {
+      final reply = await ApiService.sendMessage(text);
+      if (!mounted) return;
+      setState(() {
+        _messages.add(_ChatMessage(text: reply, isMe: false));
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _messages.add(
+          _ChatMessage(text: '오류가 발생했습니다. 다시 시도해주세요.', isMe: false),
+        );
+        _isLoading = false;
+      });
+    }
+    _scrollToBottom();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: appTheme.white_A700_01,
+      resizeToAvoidBottomInset: true,
+      body: Stack(
+        children: [
+          // Main chat body
+          SafeArea(
+            child: Column(
+              children: [
+                _buildAppBar(context),
+                Expanded(
+                  child: _messages.isEmpty && !_isLoading
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          controller: _scrollController,
+                          padding: EdgeInsets.symmetric(
+                            vertical: 12.h,
+                            horizontal: 16.h,
+                          ),
+                          itemCount: _messages.length + (_isLoading ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == _messages.length && _isLoading) {
+                              return _buildLoadingBubble();
+                            }
+                            return _buildMessageBubble(_messages[index]);
+                          },
+                        ),
+                ),
+                _buildInputArea(context),
+              ],
+            ),
+          ),
+
+          // Overlay background (tap to close panel)
+          if (_isPanelOpen)
+            AnimatedBuilder(
+              animation: _overlayFadeAnimation,
+              builder: (context, child) {
+                return GestureDetector(
+                  onTap: _closePanel,
+                  child: Container(
+                    color: Colors.black.withValues(
+                      alpha: _overlayFadeAnimation.value,
+                    ),
+                  ),
+                );
+              },
+            ),
+
+          // Slide-in panel (RecipeManagementScreen)
+          if (_isPanelOpen)
+            SlideTransition(
+              position: _panelSlideAnimation,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.82,
+                  height: double.infinity,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(24),
+                      bottomRight: Radius.circular(24),
+                    ),
+                    child: Material(
+                      elevation: 8,
+                      child: _RecipeManagementPanel(onClose: _closePanel),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.chat_bubble_outline, size: 48, color: appTheme.red_200_7f),
+          SizedBox(height: 12.h),
+          Text(
+            '냉고에게 무엇이든 물어보세요!',
+            style: TextStyleHelper.instance.body15MediumNotoSansKR.copyWith(
+              color: appTheme.red_200_7f,
+              fontSize: 12.fSize,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingBubble() {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12.h),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Container(
+            width: 32.h,
+            height: 32.h,
+            margin: EdgeInsets.only(right: 8.h),
+            decoration: BoxDecoration(
+              color: appTheme.red_A200,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                'AI',
+                style: TextStyle(
+                  color: appTheme.white_A700,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          Container(
+            padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.h),
+            decoration: BoxDecoration(
+              color: appTheme.red_50,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(4.0),
+                topRight: Radius.circular(20.0),
+                bottomLeft: Radius.circular(20.0),
+                bottomRight: Radius.circular(20.0),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      appTheme.red_A200,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 8.h),
+                Text(
+                  '답변 생성 중...',
+                  style: TextStyleHelper.instance.body15MediumNotoSansKR
+                      .copyWith(color: appTheme.red_A200, fontSize: 12.fSize),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppBar(BuildContext context) {
+    return Container(
+      height: 56.h,
+      padding: EdgeInsets.symmetric(horizontal: 14.h),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: _openPanel,
+            child: CustomImageView(
+              imagePath: ImageConstant.imgSidebarButton,
+              width: 28.h,
+              height: 24.h,
+            ),
+          ),
+          SizedBox(width: 10.h),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(top: 4.h),
+              child: Text(
+                '채팅방 이름1',
+                style: TextStyleHelper.instance.title20ExtraBoldNanumSquareAc,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () {},
+            child: Container(
+              width: 40.h,
+              height: 40.h,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFF5252).withAlpha(38),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: CustomImageView(
+                  imagePath: ImageConstant.imgPersonOutline,
+                  height: 24.h,
+                  width: 24.h,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(_ChatMessage message) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 12.h),
+      child: Row(
+        mainAxisAlignment: message.isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!message.isMe) ...[
+            Container(
+              width: 32.h,
+              height: 32.h,
+              margin: EdgeInsets.only(right: 8.h),
+              decoration: BoxDecoration(
+                color: appTheme.red_A200,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  'AI',
+                  style: TextStyle(
+                    color: appTheme.white_A700,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+          Flexible(
+            child: Container(
+              padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 14.h),
+              decoration: BoxDecoration(
+                color: message.isMe ? appTheme.red_100 : appTheme.red_50,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(message.isMe ? 20.0 : 4.0),
+                  topRight: Radius.circular(20.0),
+                  bottomLeft: Radius.circular(20.0),
+                  bottomRight: Radius.circular(message.isMe ? 4.0 : 20.0),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: appTheme.red_A200.withAlpha(51),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Text(
+                message.text,
+                style: TextStyleHelper.instance.body15MediumNotoSansKR
+                    .copyWith(fontSize: 12.fSize),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInputArea(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12.h, vertical: 10.h),
+        child: Container(
+          decoration: BoxDecoration(
+            color: appTheme.white_A700,
+            borderRadius: BorderRadius.circular(30.h),
+            border: Border.all(
+              color: _isLoading ? appTheme.red_200_7f : appTheme.red_500,
+              width: 1.0,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: () {},
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 10.h, vertical: 8.h),
+                  child: CustomImageView(
+                    imagePath: ImageConstant.imgCamera,
+                    width: 34.h,
+                    height: 34.h,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: TextField(
+                  controller: _messageController,
+                  focusNode: _focusNode,
+                  textInputAction: TextInputAction.newline,
+                  minLines: 1,
+                  maxLines: null,
+                  keyboardType: TextInputType.multiline,
+                  enabled: !_isLoading,
+                  style: TextStyleHelper.instance.body15NanumSquareAc.copyWith(
+                    color: appTheme.black_900,
+                    fontSize: 12.fSize,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: '냉고에게 물어보세요',
+                    hintStyle: TextStyleHelper.instance.body15RegularNanumSquareAc
+                        .copyWith(color: appTheme.red_200_7f, fontSize: 12.fSize),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: 10.h),
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: _isLoading ? null : _sendMessage,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12.h, vertical: 10.h),
+                  child: Opacity(
+                    opacity: _isLoading ? 0.4 : 1.0,
+                    child: CustomImageView(
+                      imagePath: ImageConstant.imgPaperplane,
+                      width: 28.h,
+                      height: 28.h,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatMessage {
+  final String text;
+  final bool isMe;
+
+  _ChatMessage({required this.text, required this.isMe});
+}
+
+// Inline panel widget that wraps RecipeManagementScreen content
+class _RecipeManagementPanel extends StatelessWidget {
+  final VoidCallback onClose;
+
+  const _RecipeManagementPanel({required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    return RecipeManagementScreen(
+      onClose: onClose,
+      activeRoute: AppRoutes.chatInterfaceScreen,
+    );
+  }
+}
