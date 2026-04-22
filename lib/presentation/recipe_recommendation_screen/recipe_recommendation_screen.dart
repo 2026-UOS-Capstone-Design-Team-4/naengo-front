@@ -43,8 +43,8 @@ class _RecipeRecommendationScreenState
     }
   }
 
-  void _navigateToDetail(RecipeItem recipe) {
-    Navigator.push(
+  Future<void> _navigateToDetail(RecipeItem recipe) async {
+    await Navigator.push(
       context,
       PageRouteBuilder(
         pageBuilder: (c, a, b) => RecipeDetailScreen(recipe: recipe),
@@ -58,6 +58,7 @@ class _RecipeRecommendationScreenState
         transitionDuration: const Duration(milliseconds: 320),
       ),
     );
+    if (mounted) setState(() {});
   }
 
   @override

@@ -29,7 +29,7 @@ class RecipeManagementScreen extends StatefulWidget {
 
 class _RecipeManagementScreenState extends State<RecipeManagementScreen>
     with SingleTickerProviderStateMixin {
-  bool _isChatExpanded = true;
+  bool _isChatExpanded = false;
   late AnimationController _chatExpandController;
   late Animation<double> _chatExpandAnimation;
 
@@ -39,7 +39,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen>
     _chatExpandController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 250),
-      value: 1.0,
+      value: 0.0,
     );
     _chatExpandAnimation = CurvedAnimation(
       parent: _chatExpandController,

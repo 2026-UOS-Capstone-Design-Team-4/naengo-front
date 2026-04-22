@@ -1,18 +1,46 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/app_export.dart';
+import '../../../data/mock_data_service.dart';
 import '../../../models/recipe_item.dart';
 
-class RecipeCardWidget extends StatelessWidget {
+class RecipeCardWidget extends StatefulWidget {
   final RecipeItem recipe;
   final VoidCallback? onTap;
 
   const RecipeCardWidget({super.key, required this.recipe, this.onTap});
 
   @override
+  State<RecipeCardWidget> createState() => _RecipeCardWidgetState();
+}
+
+class _RecipeCardWidgetState extends State<RecipeCardWidget> {
+  @override
+  void initState() {
+    super.initState();
+    MockDataService.likesNotifier.addListener(_onLikesChanged);
+  }
+
+  @override
+  void dispose() {
+    MockDataService.likesNotifier.removeListener(_onLikesChanged);
+    super.dispose();
+  }
+
+  void _onLikesChanged() => setState(() {});
+
+  void _toggleLike() {
+    widget.recipe.isLiked = !widget.recipe.isLiked;
+    widget.recipe.likesCount += widget.recipe.isLiked ? 1 : -1;
+    MockDataService.notifyLikesChanged();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final recipe = widget.recipe;
+
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         width: 130.h,
         height: 140.h,
@@ -23,7 +51,6 @@ class RecipeCardWidget extends StatelessWidget {
         ),
         child: Column(
           children: [
-            // 이미지 영역
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.only(
@@ -49,7 +76,6 @@ class RecipeCardWidget extends StatelessWidget {
                       ),
               ),
             ),
-            // 하단 제목 + 좋아요
             Container(
               width: double.infinity,
               padding: EdgeInsets.symmetric(horizontal: 8.h, vertical: 6.h),
@@ -76,20 +102,29 @@ class RecipeCardWidget extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: 2.h),
-                  Row(
-                    children: [
-                      Icon(Icons.favorite,
-                          size: 10.h, color: appTheme.red_500),
-                      SizedBox(width: 2.h),
-                      Text(
-                        '${recipe.likesCount}',
-                        style: TextStyle(
-                          fontSize: 10.fSize,
+                  GestureDetector(
+                    onTap: _toggleLike,
+                    behavior: HitTestBehavior.opaque,
+                    child: Row(
+                      children: [
+                        Icon(
+                          recipe.isLiked
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          size: 10.h,
                           color: appTheme.red_500,
-                          fontWeight: FontWeight.w600,
                         ),
-                      ),
-                    ],
+                        SizedBox(width: 2.h),
+                        Text(
+                          '${recipe.likesCount}',
+                          style: TextStyle(
+                            fontSize: 10.fSize,
+                            color: appTheme.red_500,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

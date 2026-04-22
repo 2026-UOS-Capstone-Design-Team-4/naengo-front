@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/app_export.dart';
+import '../../data/mock_data_service.dart';
 import '../../models/recipe_item.dart';
 
 class RecipeDetailScreen extends StatefulWidget {
@@ -28,6 +29,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
       widget.recipe.isLiked = _isLiked;
       widget.recipe.likesCount += _isLiked ? 1 : -1;
     });
+    MockDataService.notifyLikesChanged();
   }
 
   void _toggleBookmark() {

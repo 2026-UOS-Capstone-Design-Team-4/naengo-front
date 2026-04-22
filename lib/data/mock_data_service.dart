@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../models/chat_message.dart';
 import '../models/chat_room.dart';
 import '../models/recipe_item.dart';
@@ -7,6 +9,10 @@ import '../models/user.dart';
 /// DB정리.md 스키마를 기준으로 작성됨.
 class MockDataService {
   MockDataService._();
+
+  // 좋아요 변경 알림 — 구독하는 위젯이 즉시 반영
+  static final ValueNotifier<int> likesNotifier = ValueNotifier(0);
+  static void notifyLikesChanged() => likesNotifier.value++;
 
   // ──────────────────────────────────────────────
   // 현재 로그인된 사용자 (Users 테이블)

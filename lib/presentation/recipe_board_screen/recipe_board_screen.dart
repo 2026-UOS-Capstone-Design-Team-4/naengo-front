@@ -224,6 +224,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
 
   Widget _buildRecipeCard(RecipeItem recipe) {
     return Container(
+      height: 113.h,
       padding: EdgeInsets.all(12.h),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -284,18 +285,36 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     GestureDetector(
-                      onTap: () => setState(() {
-                        recipe.isLiked = !recipe.isLiked;
-                        recipe.likesCount += recipe.isLiked ? 1 : -1;
-                      }),
-                      child: Icon(
-                        recipe.isLiked
-                            ? Icons.favorite
-                            : Icons.favorite_border,
-                        color: recipe.isLiked
-                            ? const Color(0xFFFF5252)
-                            : const Color(0xFFCCCCCC),
-                        size: 22.h,
+                      onTap: () {
+                        setState(() {
+                          recipe.isLiked = !recipe.isLiked;
+                          recipe.likesCount += recipe.isLiked ? 1 : -1;
+                        });
+                        MockDataService.notifyLikesChanged();
+                      },
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            recipe.isLiked
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            color: recipe.isLiked
+                                ? const Color(0xFFFF5252)
+                                : const Color(0xFFCCCCCC),
+                            size: 22.h,
+                          ),
+                          SizedBox(width: 3.h),
+                          Text(
+                            '${recipe.likesCount}',
+                            style: TextStyle(
+                              fontSize: 12.fSize,
+                              color: recipe.isLiked
+                                  ? const Color(0xFFFF5252)
+                                  : const Color(0xFFCCCCCC),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     SizedBox(width: 10.h),
