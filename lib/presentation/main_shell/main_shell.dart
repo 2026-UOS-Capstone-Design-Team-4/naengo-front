@@ -18,11 +18,24 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell>
     with TickerProviderStateMixin {
   _MainPage _currentPage = _MainPage.recommendation;
+  bool _initialPageSet = false;
 
   late AnimationController _panelController;
   late Animation<Offset> _panelSlide;
   late Animation<double> _overlayFade;
   bool _isPanelOpen = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialPageSet) {
+      _initialPageSet = true;
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map && args['page'] == 'board') {
+        _currentPage = _MainPage.board;
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -105,50 +118,48 @@ class _MainShellState extends State<MainShell>
                 ),
               )
             : const BoxDecoration(color: Colors.white),
-        child: GestureDetector(
-          onTap: () {
-            if (_isPanelOpen) _closePanel();
-          },
-          behavior: HitTestBehavior.translucent,
-          child: Stack(
-            children: [
-              SafeArea(
-                child: Column(
-                  children: [
-                    // ── 투명 앱바 ──────────────────────────────
-                    _buildAppBar(),
-                    // ── 화면 콘텐츠 (슬라이드 없음) ────────────
-                    Expanded(
-                      child: IndexedStack(
-                        index: _currentPage.index,
-                        children: const [
-                          RecipeRecommendationScreen(),
-                          RecipeBoardScreen(),
-                        ],
-                      ),
+        child: Stack(
+          children: [
+            SafeArea(
+              child: Column(
+                children: [
+                  // ── 투명 앱바 ──────────────────────────────
+                  _buildAppBar(),
+                  // ── 화면 콘텐츠 (슬라이드 없음) ────────────
+                  Expanded(
+                    child: IndexedStack(
+                      index: _currentPage.index,
+                      children: const [
+                        RecipeRecommendationScreen(),
+                        RecipeBoardScreen(),
+                      ],
                     ),
-                  ],
+                  ),
+                ],
+              ),
+            ),
+
+            // 딤 오버레이 — 탭하면 사이드바 닫힘 (회색 영역)
+            if (_isPanelOpen)
+              AnimatedBuilder(
+                animation: _overlayFade,
+                builder: (context, _) => GestureDetector(
+                  onTap: _closePanel,
+                  child: Container(
+                    color: Colors.black.withOpacity(_overlayFade.value),
+                  ),
                 ),
               ),
 
-              // 사이드바 딤 오버레이
-              if (_isPanelOpen)
-                AnimatedBuilder(
-                  animation: _overlayFade,
-                  builder: (context, _) => GestureDetector(
-                    onTap: _closePanel,
-                    child: Container(
-                      color: Colors.black.withOpacity(_overlayFade.value),
-                    ),
-                  ),
-                ),
-
-              // 사이드바 패널
-              if (_isPanelOpen)
-                SlideTransition(
-                  position: _panelSlide,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
+            // 사이드바 패널 — 내부 탭은 닫히지 않도록 GestureDetector로 흡수
+            if (_isPanelOpen)
+              SlideTransition(
+                position: _panelSlide,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: GestureDetector(
+                    onTap: () {}, // 패널 내부 빈 공간 탭 흡수
+                    behavior: HitTestBehavior.opaque,
                     child: SizedBox(
                       width: MediaQuery.of(context).size.width * 0.82,
                       height: double.infinity,
@@ -164,14 +175,21 @@ class _MainShellState extends State<MainShell>
                             activeRoute: _activeRoute,
                             onNavigateToRecommendation: _goToRecommendation,
                             onNavigateToBoard: _goToBoard,
+                            onNavigateToRoom: (room) {
+                              _closePanel();
+                              Navigator.of(context).pushNamed(
+                                AppRoutes.chatInterfaceScreen,
+                                arguments: room,
+                              );
+                            },
                           ),
                         ),
                       ),
                     ),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );

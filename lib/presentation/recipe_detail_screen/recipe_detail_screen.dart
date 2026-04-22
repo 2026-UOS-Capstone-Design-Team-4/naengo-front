@@ -26,7 +26,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     setState(() {
       _isLiked = !_isLiked;
       widget.recipe.isLiked = _isLiked;
-      widget.recipe.likeCount += _isLiked ? 1 : -1;
+      widget.recipe.likesCount += _isLiked ? 1 : -1;
     });
   }
 
@@ -34,6 +34,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     setState(() {
       _isBookmarked = !_isBookmarked;
       widget.recipe.isBookmarked = _isBookmarked;
+      widget.recipe.scrapCount += _isBookmarked ? 1 : -1;
     });
   }
 
@@ -60,13 +61,19 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       SizedBox(height: 18.h),
                       _buildSection(
                         title: '필요한 재료',
-                        content: widget.recipe.ingredients,
+                        content: widget.recipe.ingredientsList.isNotEmpty
+                            ? widget.recipe.ingredientsList.join('\n')
+                            : widget.recipe.ingredientsRaw,
                       ),
                       SizedBox(height: 18.h),
                       _buildSection(
                         title: '조리법',
-                        content: widget.recipe.cookingSteps != null
-                            ? widget.recipe.cookingSteps!.join('\n')
+                        content: widget.recipe.cookingSteps.isNotEmpty
+                            ? widget.recipe.cookingSteps
+                                .asMap()
+                                .entries
+                                .map((e) => '${e.key + 1}. ${e.value}')
+                                .join('\n')
                             : '조리법을 불러오는 중입니다...',
                       ),
                       SizedBox(height: 40.h),
@@ -81,7 +88,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-  /// 상단 헤더: < 상세보기
   Widget _buildHeader() {
     return Padding(
       padding: EdgeInsets.only(
@@ -115,7 +121,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-  /// 이미지 카드 + 이름/하트/북마크 오버레이
   Widget _buildRecipeCard() {
     return ClipRRect(
       borderRadius: BorderRadius.circular(14.h),
@@ -125,9 +130,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 음식 사진
-            widget.recipe.imageAsset != null
-                ? Image.asset(widget.recipe.imageAsset!, fit: BoxFit.cover)
+            widget.recipe.imageUrl != null
+                ? Image.network(widget.recipe.imageUrl!, fit: BoxFit.cover)
                 : Container(
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
@@ -144,8 +148,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       ),
                     ),
                   ),
-
-            // 하단 반투명 이름 영역
             Positioned(
               bottom: 0,
               left: 0,
@@ -159,10 +161,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // 레시피 이름
                     Expanded(
                       child: Text(
-                        widget.recipe.name,
+                        widget.recipe.title,
                         style: TextStyle(
                           color: const Color(0xFFFF7878),
                           fontSize: 15.fSize,
@@ -173,7 +174,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    // 하트 아이콘
                     GestureDetector(
                       onTap: _toggleLike,
                       child: Icon(
@@ -183,7 +183,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       ),
                     ),
                     SizedBox(width: 10.h),
-                    // 북마크 아이콘
                     GestureDetector(
                       onTap: _toggleBookmark,
                       child: Icon(
@@ -204,7 +203,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-  /// 설명 텍스트 + 짧은 빨간 선
   Widget _buildDescription() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,7 +225,6 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
-  /// 필요한 재료 / 조리법 공통 섹션
   Widget _buildSection({required String title, required String content}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
+import '../../data/mock_data_service.dart';
+import '../../models/chat_message.dart';
+import '../../models/chat_room.dart';
 import '../../services/api_service.dart';
 import '../../widgets/custom_image_view.dart';
 import '../recipe_management_screen/recipe_management_screen.dart';
@@ -18,17 +21,18 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
 
-  // Animation controller for the side panel
   late AnimationController _panelAnimationController;
   late Animation<Offset> _panelSlideAnimation;
   late Animation<double> _overlayFadeAnimation;
 
   bool _isPanelOpen = false;
   bool _isLoading = false;
-  bool _initialMessageSent = false;
+  bool _didInitialize = false;
+  bool _titleUpdated = false; // 첫 메시지로 방 제목 한 번만 업데이트
 
-  // Start with empty messages
-  final List<_ChatMessage> _messages = [];
+  late ChatRoom _currentRoom;
+  // MockDataService에서 로드한 뒤 같은 참조를 유지
+  late List<ChatMessage> _messages;
 
   @override
   void initState() {
@@ -52,16 +56,36 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_initialMessageSent) {
-      _initialMessageSent = true;
-      final initialMessage =
-          ModalRoute.of(context)?.settings.arguments as String?;
-      if (initialMessage != null && initialMessage.isNotEmpty) {
+    if (_didInitialize) return;
+    _didInitialize = true;
+
+    final args = ModalRoute.of(context)?.settings.arguments;
+
+    if (args is ChatRoom) {
+      // 기존 채팅방으로 이동 — 저장된 메시지 로드
+      _currentRoom = args;
+      _titleUpdated = true;
+      _messages = MockDataService.getMessages(_currentRoom.roomId);
+    } else {
+      // 새 채팅방 생성
+      _currentRoom = MockDataService.createRoom();
+      _messages = MockDataService.getMessages(_currentRoom.roomId);
+
+      if (args is String && args.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          _sendInitialMessage(initialMessage);
+          _sendInitialMessage(args);
         });
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    _focusNode.dispose();
+    _panelAnimationController.dispose();
+    super.dispose();
   }
 
   void _openPanel() {
@@ -71,7 +95,7 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
 
   void _closePanel() {
     _panelAnimationController.reverse().then((_) {
-      setState(() => _isPanelOpen = false);
+      if (mounted) setState(() => _isPanelOpen = false);
     });
   }
 
@@ -87,58 +111,68 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
     });
   }
 
+  /// 첫 사용자 메시지로 채팅방 제목 업데이트
+  void _maybeUpdateTitle(String text) {
+    if (_titleUpdated) return;
+    _titleUpdated = true;
+    final title = text.length > 20 ? '${text.substring(0, 20)}…' : text;
+    MockDataService.updateRoomTitle(_currentRoom.roomId, title);
+    setState(() {
+      _currentRoom = _currentRoom.copyWith(title: title);
+    });
+  }
+
+  void _addMessage(ChatMessage message) {
+    MockDataService.addMessage(_currentRoom.roomId, message);
+    setState(() {}); // _messages는 같은 리스트 참조라 setState만 호출
+  }
+
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty || _isLoading) return;
 
-    setState(() {
-      _messages.add(_ChatMessage(text: text, isMe: true));
-      _isLoading = true;
-    });
+    _maybeUpdateTitle(text);
+    _addMessage(ChatMessage(text: text, isMe: true, sentAt: DateTime.now()));
+    setState(() => _isLoading = true);
     _messageController.clear();
     _scrollToBottom();
 
     try {
       final reply = await ApiService.sendMessage(text);
       if (!mounted) return;
-      setState(() {
-        _messages.add(_ChatMessage(text: reply, isMe: false));
-        _isLoading = false;
-      });
+      _addMessage(ChatMessage(text: reply, isMe: false, sentAt: DateTime.now()));
+      setState(() => _isLoading = false);
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _messages.add(
-          _ChatMessage(text: '오류가 발생했습니다. 다시 시도해주세요.', isMe: false),
-        );
-        _isLoading = false;
-      });
+      _addMessage(ChatMessage(
+        text: '오류가 발생했습니다. 다시 시도해주세요.',
+        isMe: false,
+        sentAt: DateTime.now(),
+      ));
+      setState(() => _isLoading = false);
     }
     _scrollToBottom();
   }
 
   Future<void> _sendInitialMessage(String text) async {
-    setState(() {
-      _messages.add(_ChatMessage(text: text, isMe: true));
-      _isLoading = true;
-    });
+    _maybeUpdateTitle(text);
+    _addMessage(ChatMessage(text: text, isMe: true, sentAt: DateTime.now()));
+    setState(() => _isLoading = true);
     _scrollToBottom();
 
     try {
       final reply = await ApiService.sendMessage(text);
       if (!mounted) return;
-      setState(() {
-        _messages.add(_ChatMessage(text: reply, isMe: false));
-        _isLoading = false;
-      });
+      _addMessage(ChatMessage(text: reply, isMe: false, sentAt: DateTime.now()));
+      setState(() => _isLoading = false);
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _messages.add(
-          _ChatMessage(text: '오류가 발생했습니다. 다시 시도해주세요.', isMe: false),
-        );
-        _isLoading = false;
-      });
+      _addMessage(ChatMessage(
+        text: '오류가 발생했습니다. 다시 시도해주세요.',
+        isMe: false,
+        sentAt: DateTime.now(),
+      ));
+      setState(() => _isLoading = false);
     }
     _scrollToBottom();
   }
@@ -150,7 +184,7 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          // Main chat body
+          // 메인 채팅 영역
           SafeArea(
             child: Column(
               children: [
@@ -178,7 +212,7 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
             ),
           ),
 
-          // Overlay background (tap to close panel)
+          // 딤 오버레이 — 탭하면 사이드바 닫힘 (회색 영역)
           if (_isPanelOpen)
             AnimatedBuilder(
               animation: _overlayFadeAnimation,
@@ -194,23 +228,27 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
               },
             ),
 
-          // Slide-in panel (RecipeManagementScreen)
+          // 사이드바 패널 — 내부 탭은 닫히지 않도록 GestureDetector로 흡수
           if (_isPanelOpen)
             SlideTransition(
               position: _panelSlideAnimation,
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.82,
-                  height: double.infinity,
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topRight: Radius.circular(24),
-                      bottomRight: Radius.circular(24),
-                    ),
-                    child: Material(
-                      elevation: 8,
-                      child: _RecipeManagementPanel(onClose: _closePanel),
+                child: GestureDetector(
+                  onTap: () {}, // 패널 내부 빈 공간 탭 흡수
+                  behavior: HitTestBehavior.opaque,
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.82,
+                    height: double.infinity,
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topRight: Radius.circular(24),
+                        bottomRight: Radius.circular(24),
+                      ),
+                      child: Material(
+                        elevation: 8,
+                        child: _buildPanel(),
+                      ),
                     ),
                   ),
                 ),
@@ -218,6 +256,34 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPanel() {
+    return RecipeManagementScreen(
+      onClose: _closePanel,
+      activeRoute: AppRoutes.chatInterfaceScreen,
+      currentRoomId: _currentRoom.roomId,
+      onNavigateToRoom: (room) {
+        _closePanel();
+        Navigator.of(context).pushReplacementNamed(
+          AppRoutes.chatInterfaceScreen,
+          arguments: room,
+        );
+      },
+      onNavigateToRecommendation: () {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRoutes.mainShell,
+          (route) => false,
+        );
+      },
+      onNavigateToBoard: () {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRoutes.mainShell,
+          (route) => false,
+          arguments: {'page': 'board'},
+        );
+      },
     );
   }
 
@@ -285,9 +351,7 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
                   height: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      appTheme.red_A200,
-                    ),
+                    valueColor: AlwaysStoppedAnimation<Color>(appTheme.red_A200),
                   ),
                 ),
                 SizedBox(width: 8.h),
@@ -323,8 +387,9 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
             child: Padding(
               padding: EdgeInsets.only(top: 4.h),
               child: Text(
-                '채팅방 이름1',
+                _currentRoom.title,
                 style: TextStyleHelper.instance.title20ExtraBoldNanumSquareAc,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
@@ -358,13 +423,12 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
     );
   }
 
-  Widget _buildMessageBubble(_ChatMessage message) {
+  Widget _buildMessageBubble(ChatMessage message) {
     return Padding(
       padding: EdgeInsets.only(bottom: 12.h),
       child: Row(
-        mainAxisAlignment: message.isMe
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
+        mainAxisAlignment:
+            message.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!message.isMe) ...[
@@ -491,24 +555,3 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
   }
 }
 
-class _ChatMessage {
-  final String text;
-  final bool isMe;
-
-  _ChatMessage({required this.text, required this.isMe});
-}
-
-// Inline panel widget that wraps RecipeManagementScreen content
-class _RecipeManagementPanel extends StatelessWidget {
-  final VoidCallback onClose;
-
-  const _RecipeManagementPanel({required this.onClose});
-
-  @override
-  Widget build(BuildContext context) {
-    return RecipeManagementScreen(
-      onClose: onClose,
-      activeRoute: AppRoutes.chatInterfaceScreen,
-    );
-  }
-}

@@ -28,7 +28,7 @@ class AppNavigationScreen extends StatelessWidget {
                       ),
                       _buildScreenTitle(
                         context,
-                        screenTitle: "새(기존)채팅반 키보드 O",
+                        screenTitle: "새(기존)채팅방",
                         onTapScreenTitle: () => onTapScreenTitle(
                           context,
                           AppRoutes.chatInterfaceScreen,

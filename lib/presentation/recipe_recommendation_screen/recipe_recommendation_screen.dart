@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
+import '../../data/mock_data_service.dart';
+import '../../models/recipe_item.dart';
 import '../../widgets/custom_image_view.dart';
+import '../recipe_detail_screen/recipe_detail_screen.dart';
 import './widgets/recipe_card_widget.dart';
 
 class RecipeRecommendationScreen extends StatefulWidget {
@@ -15,6 +18,13 @@ class RecipeRecommendationScreen extends StatefulWidget {
 class _RecipeRecommendationScreenState
     extends State<RecipeRecommendationScreen> {
   final TextEditingController _messageController = TextEditingController();
+  late final List<RecipeItem> _recommendations;
+
+  @override
+  void initState() {
+    super.initState();
+    _recommendations = MockDataService.getRecommendations(count: 3);
+  }
 
   @override
   void dispose() {
@@ -26,8 +36,28 @@ class _RecipeRecommendationScreenState
     final text = _messageController.text.trim();
     if (text.isNotEmpty) {
       _messageController.clear();
-      Navigator.of(context).pushNamed(AppRoutes.chatInterfaceScreen, arguments: text);
+      Navigator.of(context).pushNamed(
+        AppRoutes.chatInterfaceScreen,
+        arguments: text,
+      );
     }
+  }
+
+  void _navigateToDetail(RecipeItem recipe) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (c, a, b) => RecipeDetailScreen(recipe: recipe),
+        transitionsBuilder: (c, a, b, child) => SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.0, 1.0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+          child: child,
+        ),
+        transitionDuration: const Duration(milliseconds: 320),
+      ),
+    );
   }
 
   @override
@@ -93,7 +123,7 @@ class _RecipeRecommendationScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "새 레시피 추천",
+          "인기 레시피 추천",
           style: TextStyleHelper.instance.body15Regular.copyWith(
             color: const Color(0xFF999999),
           ),
@@ -102,12 +132,19 @@ class _RecipeRecommendationScreenState
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
-            children: List.generate(3, (index) {
+            children: _recommendations.asMap().entries.map((entry) {
+              final index = entry.key;
+              final recipe = entry.value;
               return Padding(
-                padding: EdgeInsets.only(right: index < 2 ? 16.h : 0),
-                child: RecipeCardWidget(onTap: () {}),
+                padding: EdgeInsets.only(
+                  right: index < _recommendations.length - 1 ? 16.h : 0,
+                ),
+                child: RecipeCardWidget(
+                  recipe: recipe,
+                  onTap: () => _navigateToDetail(recipe),
+                ),
               );
-            }),
+            }).toList(),
           ),
         ),
       ],

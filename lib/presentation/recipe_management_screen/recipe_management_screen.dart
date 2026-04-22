@@ -1,20 +1,26 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
+import '../../data/mock_data_service.dart';
+import '../../models/chat_room.dart';
 import '../../widgets/custom_image_view.dart';
 
 class RecipeManagementScreen extends StatefulWidget {
   final VoidCallback? onClose;
   final String? activeRoute;
+  final String? currentRoomId; // 현재 열려 있는 채팅방 ID (채팅 화면에서만 전달)
   final VoidCallback? onNavigateToRecommendation;
   final VoidCallback? onNavigateToBoard;
+  final void Function(ChatRoom room)? onNavigateToRoom;
 
   const RecipeManagementScreen({
     super.key,
     this.onClose,
     this.activeRoute,
+    this.currentRoomId,
     this.onNavigateToRecommendation,
     this.onNavigateToBoard,
+    this.onNavigateToRoom,
   });
 
   @override
@@ -33,7 +39,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen>
     _chatExpandController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 250),
-      value: 1.0, // 기본 펼쳐진 상태
+      value: 1.0,
     );
     _chatExpandAnimation = CurvedAnimation(
       parent: _chatExpandController,
@@ -56,13 +62,17 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen>
     }
   }
 
-  void _handleClose() {
-    if (widget.onClose != null) {
-      widget.onClose!();
-    }
+  bool _isActive(String route) => widget.activeRoute == route;
+
+  void _deleteRoom(String roomId) {
+    setState(() => MockDataService.removeRoom(roomId));
   }
 
-  bool _isActive(String route) => widget.activeRoute == route;
+  void _openRoom(ChatRoom room) {
+    if (widget.onNavigateToRoom != null) {
+      widget.onNavigateToRoom!(room);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,24 +88,32 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen>
               iconPath: ImageConstant.imgRed500,
               title: '새 채팅',
               isActive: _isActive(AppRoutes.recipeRecommendationScreen),
-              onTap: () => _onNewChatTapped(context),
+              onTap: () {
+                if (widget.onNavigateToRecommendation != null) {
+                  widget.onNavigateToRecommendation!();
+                }
+              },
             ),
             SizedBox(height: 8.h),
             _buildMenuItem(
               iconPath: ImageConstant.imgRed50024x24,
               title: '레시피 게시판',
               isActive: _isActive(AppRoutes.recipeBoardScreen),
-              onTap: () => _onRecipeBoardTapped(context),
+              onTap: () {
+                if (widget.onNavigateToBoard != null) {
+                  widget.onNavigateToBoard!();
+                }
+              },
             ),
             SizedBox(height: 8.h),
             _buildMenuItem(
               iconPath: ImageConstant.imgPencilSharp,
               title: '레시피 작성하기',
               isActive: false,
-              onTap: () => _onRecipeCreateTapped(context),
+              onTap: () {},
             ),
             SizedBox(height: 8.h),
-            _buildChatMenuItem(context),
+            _buildChatSection(),
           ],
         ),
       ),
@@ -108,7 +126,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen>
       child: Align(
         alignment: Alignment.centerRight,
         child: GestureDetector(
-          onTap: _handleClose,
+          onTap: widget.onClose,
           child: Container(
             padding: EdgeInsets.all(8.h),
             child: Icon(
@@ -128,8 +146,6 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen>
     required bool isActive,
     required VoidCallback onTap,
   }) {
-    // 비활성: 좌측 margin 26h (아이콘 위치 고정)
-    // 활성: 좌측 끝에서 시작, 우측만 둥글게 (사이드바.png 스타일)
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -173,10 +189,13 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen>
     );
   }
 
-  Widget _buildChatMenuItem(BuildContext context) {
+  Widget _buildChatSection() {
+    final rooms = MockDataService.chatRooms;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // 내 채팅 헤더
         GestureDetector(
           onTap: _toggleChatExpand,
           child: Container(
@@ -209,99 +228,80 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen>
             ),
           ),
         ),
+
+        // 채팅방 목록
         SizeTransition(
           sizeFactor: _chatExpandAnimation,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: 4.h),
-              // 현재 채팅방 - 채팅 중일 때 강조 (우측만 둥글게, 좌측 시작)
-              Container(
-                margin: EdgeInsets.only(right: 50.h),
-                padding: EdgeInsets.only(
-                  top: 8.h,
-                  bottom: 8.h,
-                  left: 60.h,
-                  right: 20.h,
-                ),
-                decoration: BoxDecoration(
-                  color: _isActive(AppRoutes.chatInterfaceScreen)
-                      ? appTheme.red_500
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.only(
-                    topRight: Radius.circular(14.h),
-                    bottomRight: Radius.circular(14.h),
+          child: rooms.isEmpty
+              ? Padding(
+                  padding: EdgeInsets.only(left: 60.h, top: 8.h, bottom: 8.h),
+                  child: Text(
+                    '채팅 기록이 없습니다',
+                    style: TextStyleHelper.instance.body15BoldNanumSquareAc
+                        .copyWith(color: appTheme.red_500.withAlpha(100)),
                   ),
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 4.h),
+                    ...rooms.map((room) => _buildRoomItem(room)),
+                    SizedBox(height: 8.h),
+                  ],
                 ),
-                child: Text(
-                  '현재채팅방 이름',
-                  style: TextStyleHelper.instance.body15BoldNanumSquareAc.copyWith(
-                    color: _isActive(AppRoutes.chatInterfaceScreen)
-                        ? Colors.white
-                        : appTheme.black_900_01,
-                  ),
-                ),
-              ),
-              SizedBox(height: 4.h),
-              _buildChatHistoryItem('이전채팅기록 1', () {}),
-              SizedBox(height: 4.h),
-              _buildChatHistoryItem('이전채팅기록 2', () {}),
-              SizedBox(height: 8.h),
-            ],
-          ),
         ),
       ],
     );
   }
 
-  Widget _buildChatHistoryItem(String title, VoidCallback onDeleteTap) {
-    return Container(
-      margin: EdgeInsets.only(right: 50.h),
-      padding: EdgeInsets.symmetric(vertical: 8.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          SizedBox(width: 60.h),
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyleHelper.instance.body15BoldNanumSquareAc,
-            ),
+  Widget _buildRoomItem(ChatRoom room) {
+    final isCurrent = room.roomId == widget.currentRoomId;
+
+    return GestureDetector(
+      onTap: isCurrent ? null : () => _openRoom(room),
+      child: Container(
+        margin: EdgeInsets.only(right: 50.h, bottom: 4.h),
+        padding: EdgeInsets.only(
+          top: 8.h,
+          bottom: 8.h,
+          left: 60.h,
+          right: 12.h,
+        ),
+        decoration: BoxDecoration(
+          color: isCurrent ? appTheme.red_500 : Colors.transparent,
+          borderRadius: BorderRadius.only(
+            topRight: Radius.circular(14.h),
+            bottomRight: Radius.circular(14.h),
           ),
-          GestureDetector(
-            onTap: onDeleteTap,
-            child: CustomImageView(
-              imagePath: ImageConstant.imgTrashOutline,
-              width: 22.h,
-              height: 22.h,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                room.title,
+                style: TextStyleHelper.instance.body15BoldNanumSquareAc.copyWith(
+                  color: isCurrent ? Colors.white : appTheme.black_900_01,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
-        ],
+            // 현재 방은 삭제 버튼 숨김
+            if (!isCurrent)
+              GestureDetector(
+                onTap: () => _deleteRoom(room.roomId),
+                child: Padding(
+                  padding: EdgeInsets.only(left: 8.h),
+                  child: CustomImageView(
+                    imagePath: ImageConstant.imgTrashOutline,
+                    width: 20.h,
+                    height: 20.h,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
-
-  void _onNewChatTapped(BuildContext context) {
-    if (widget.onNavigateToRecommendation != null) {
-      widget.onNavigateToRecommendation!();
-    } else {
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.recipeRecommendationScreen,
-        (route) => false,
-      );
-    }
-  }
-
-  void _onRecipeBoardTapped(BuildContext context) {
-    if (widget.onNavigateToBoard != null) {
-      widget.onNavigateToBoard!();
-    } else {
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.recipeBoardScreen,
-        (route) => false,
-      );
-    }
-  }
-
-  void _onRecipeCreateTapped(BuildContext context) {}
 }
