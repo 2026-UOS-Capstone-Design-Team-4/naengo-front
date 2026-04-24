@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
@@ -5,6 +7,7 @@ import '../../data/mock_data_service.dart';
 import '../../models/chat_message.dart';
 import '../../models/chat_room.dart';
 import '../../services/api_service.dart';
+import '../../services/camera_service.dart';
 import '../../widgets/custom_image_view.dart';
 import '../recipe_management_screen/recipe_management_screen.dart';
 
@@ -152,6 +155,63 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
       setState(() => _isLoading = false);
     }
     _scrollToBottom();
+  }
+
+  /// 카메라를 열어 사진 촬영 → 미리보기 → 확인 시 메시지로 추가.
+  Future<void> _onCameraPressed() async {
+    if (_isLoading) return;
+    final photo = await CameraService.takePhoto();
+    if (!mounted || photo == null) return;
+
+    final confirmed = await _showPhotoPreview(File(photo.path));
+    if (!mounted || confirmed != true) return;
+
+    // 현재는 텍스트 메시지로 '[사진]' 프리픽스만 추가.
+    // TODO: ApiService가 이미지 업로드 지원 시 multipart 요청으로 교체.
+    _addMessage(ChatMessage(
+      text: '[사진] ${photo.name}',
+      isMe: true,
+      sentAt: DateTime.now(),
+    ));
+    _scrollToBottom();
+  }
+
+  Future<bool?> _showPhotoPreview(File file) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.file(file, fit: BoxFit.cover),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const Text('다시 찍기'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    child: const Text('보내기'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _sendInitialMessage(String text) async {
@@ -501,13 +561,16 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               GestureDetector(
-                onTap: () {},
+                onTap: _isLoading ? null : _onCameraPressed,
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 10.h, vertical: 8.h),
-                  child: CustomImageView(
-                    imagePath: ImageConstant.imgCamera,
-                    width: 34.h,
-                    height: 34.h,
+                  child: Opacity(
+                    opacity: _isLoading ? 0.4 : 1.0,
+                    child: CustomImageView(
+                      imagePath: ImageConstant.imgCamera,
+                      width: 34.h,
+                      height: 34.h,
+                    ),
                   ),
                 ),
               ),

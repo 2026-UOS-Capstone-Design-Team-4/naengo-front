@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
 import '../../data/mock_data_service.dart';
 import '../../models/recipe_item.dart';
+import '../../services/camera_service.dart';
 import '../../widgets/custom_image_view.dart';
 import '../recipe_detail_screen/recipe_detail_screen.dart';
 import './widgets/recipe_card_widget.dart';
@@ -41,6 +44,63 @@ class _RecipeRecommendationScreenState
         arguments: text,
       );
     }
+  }
+
+  /// 카메라를 열어 사진을 촬영하고 미리보기 확인.
+  Future<void> _onCameraPressed() async {
+    final photo = await CameraService.takePhoto();
+    if (!mounted || photo == null) return;
+
+    final confirmed = await _showPhotoPreview(File(photo.path));
+    if (!mounted || confirmed != true) return;
+
+    // 확인했으면 채팅방으로 이동 (이미지 경로 전달)
+    // TODO: 추후 ApiService에 이미지 업로드 파라미터 연결
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('사진이 첨부되었습니다: ${photo.name}'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  /// 촬영한 사진 미리보기 다이얼로그.
+  Future<bool?> _showPhotoPreview(File file) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.file(file, fit: BoxFit.cover),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                    child: const Text('다시 찍기'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                    child: const Text('사용'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _navigateToDetail(RecipeItem recipe) async {
@@ -167,9 +227,7 @@ class _RecipeRecommendationScreenState
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               GestureDetector(
-                onTap: () {
-                  Navigator.of(context).pushNamed(AppRoutes.chatInterfaceScreen);
-                },
+                onTap: _onCameraPressed,
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 10.h, vertical: 8.h),
                   child: CustomImageView(
