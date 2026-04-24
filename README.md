@@ -101,7 +101,6 @@ Container(
   height: 20.h,
   child: Text('반응형 컨테이너', style: TextStyle(fontSize: 14.fSize)),
 )
-```
 
 ## 📦 배포
 ```bash
