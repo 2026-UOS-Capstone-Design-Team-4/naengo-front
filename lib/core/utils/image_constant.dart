@@ -12,6 +12,7 @@ class ImageConstant {
 
   // Chat
   static String imgCamera = '${_basePath}img_camera.svg';
+  static String imgCameraoutline = '${_basePath}img_cameraoutline.svg';
   static String imgPaperplane = '${_basePath}img_paperplane.svg';
 
   // Sidebar menu icons
@@ -20,6 +21,9 @@ class ImageConstant {
   static String imgPencilSharp = '${_basePath}img_pencil_sharp.svg';
   static String img24x24 = '${_basePath}img__24x24.svg';
   static String imgTrashOutline = '${_basePath}img_trash_outline.svg';
+
+  static String imgGroup5 = '${_basePath}img_group_5.svg';
+  static String imgBell = '${_basePath}img_vector.svg';
 
   // Fallback
   static String imgImageNotFound = '${_basePath}image_not_found.png';

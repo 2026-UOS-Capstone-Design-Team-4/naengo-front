@@ -68,7 +68,7 @@ class CustomChatInputField extends StatelessWidget {
         decoration: InputDecoration(
           hintText: placeholder ?? "냉고에게 물어보세요",
           hintStyle: TextStyleHelper.instance.body15RegularNanumSquareAc
-              .copyWith(color: Color(0xff7fe4adad)),
+              .copyWith(color: const Color(0xFFE4ADAD)),
           prefixIcon: Padding(
             padding: EdgeInsets.all(8.h),
             child: GestureDetector(
