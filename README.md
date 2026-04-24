@@ -113,12 +113,6 @@ flutter build ios --release
 
 # Web
 flutter build web --release
-```
-
-## 🙏 출처
-- [Rocket.new](https://rocket.new) 초기 스캐폴드
-- [Flutter](https://flutter.dev) & [Dart](https://dart.dev)
-- Material Design 스타일 적용
 
 ---
 
