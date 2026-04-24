@@ -27,39 +27,11 @@ class RecipeManagementScreen extends StatefulWidget {
   State<RecipeManagementScreen> createState() => _RecipeManagementScreenState();
 }
 
-class _RecipeManagementScreenState extends State<RecipeManagementScreen>
-    with SingleTickerProviderStateMixin {
+class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
   bool _isChatExpanded = false;
-  late AnimationController _chatExpandController;
-  late Animation<double> _chatExpandAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _chatExpandController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 250),
-      value: 0.0,
-    );
-    _chatExpandAnimation = CurvedAnimation(
-      parent: _chatExpandController,
-      curve: Curves.easeInOut,
-    );
-  }
-
-  @override
-  void dispose() {
-    _chatExpandController.dispose();
-    super.dispose();
-  }
 
   void _toggleChatExpand() {
     setState(() => _isChatExpanded = !_isChatExpanded);
-    if (_isChatExpanded) {
-      _chatExpandController.forward();
-    } else {
-      _chatExpandController.reverse();
-    }
   }
 
   bool _isActive(String route) => widget.activeRoute == route;
@@ -113,7 +85,8 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen>
               onTap: () {},
             ),
             SizedBox(height: 8.h),
-            _buildChatSection(),
+            _buildChatHeader(),
+            if (_isChatExpanded) Expanded(child: _buildChatList()),
           ],
         ),
       ),
@@ -189,68 +162,63 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen>
     );
   }
 
-  Widget _buildChatSection() {
+  // '내 채팅' 헤더 (접기/펼치기 토글) — 고정 영역
+  Widget _buildChatHeader() {
+    return GestureDetector(
+      onTap: _toggleChatExpand,
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: 12.h),
+        padding: EdgeInsets.symmetric(horizontal: 14.h, vertical: 12.h),
+        child: Row(
+          children: [
+            CustomImageView(
+              imagePath: ImageConstant.img24x24,
+              width: 24.h,
+              height: 24.h,
+            ),
+            SizedBox(width: 10.h),
+            Text(
+              '내 채팅',
+              style: TextStyleHelper.instance.title18BoldNanumSquareAc,
+            ),
+            SizedBox(width: 4.h),
+            AnimatedRotation(
+              turns: _isChatExpanded ? 0.5 : 0.0,
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              child: Icon(
+                Icons.keyboard_arrow_down,
+                size: 20.h,
+                color: appTheme.red_500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 채팅방 목록 — 이 영역만 스크롤 (펼쳐진 경우에만 그려짐)
+  Widget _buildChatList() {
     final rooms = MockDataService.chatRooms;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 내 채팅 헤더
-        GestureDetector(
-          onTap: _toggleChatExpand,
-          child: Container(
-            margin: EdgeInsets.symmetric(horizontal: 12.h),
-            padding: EdgeInsets.symmetric(horizontal: 14.h, vertical: 12.h),
-            child: Row(
-              children: [
-                CustomImageView(
-                  imagePath: ImageConstant.img24x24,
-                  width: 24.h,
-                  height: 24.h,
-                ),
-                SizedBox(width: 10.h),
-                Text(
-                  '내 채팅',
-                  style: TextStyleHelper.instance.title18BoldNanumSquareAc,
-                ),
-                SizedBox(width: 4.h),
-                AnimatedRotation(
-                  turns: _isChatExpanded ? 0.5 : 0.0,
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeInOut,
-                  child: Icon(
-                    Icons.keyboard_arrow_down,
-                    size: 20.h,
-                    color: appTheme.red_500,
-                  ),
-                ),
-              ],
-            ),
-          ),
+    if (rooms.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.only(left: 60.h, top: 8.h, bottom: 8.h),
+        child: Text(
+          '채팅 기록이 없습니다',
+          style: TextStyleHelper.instance.body15BoldNanumSquareAc
+              .copyWith(color: appTheme.red_500.withAlpha(100)),
         ),
+      );
+    }
 
-        // 채팅방 목록
-        SizeTransition(
-          sizeFactor: _chatExpandAnimation,
-          child: rooms.isEmpty
-              ? Padding(
-                  padding: EdgeInsets.only(left: 60.h, top: 8.h, bottom: 8.h),
-                  child: Text(
-                    '채팅 기록이 없습니다',
-                    style: TextStyleHelper.instance.body15BoldNanumSquareAc
-                        .copyWith(color: appTheme.red_500.withAlpha(100)),
-                  ),
-                )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(height: 4.h),
-                    ...rooms.map((room) => _buildRoomItem(room)),
-                    SizedBox(height: 8.h),
-                  ],
-                ),
-        ),
-      ],
+    return Scrollbar(
+      child: ListView.builder(
+        padding: EdgeInsets.only(top: 4.h, bottom: 8.h),
+        itemCount: rooms.length,
+        itemBuilder: (context, index) => _buildRoomItem(rooms[index]),
+      ),
     );
   }
 
