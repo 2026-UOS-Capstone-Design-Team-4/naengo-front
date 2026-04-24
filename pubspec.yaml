@@ -17,6 +17,8 @@ dependencies:
   universal_html: ^2.2.4
   http: ^1.6.0
   image_picker: ^1.1.2
+  googleapis: ^13.2.0
+  googleapis_auth: ^1.6.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -26,6 +28,7 @@ flutter:
   assets:
     - assets/
     - assets/images/
+    - assets/credentials/
   fonts:
     - family: Urbanist
       fonts:

@@ -46,7 +46,7 @@ class _RecipeRecommendationScreenState
     }
   }
 
-  /// 카메라를 열어 사진을 촬영하고 미리보기 확인.
+  /// 카메라 → 촬영 → 미리보기 → 채팅방으로 이동하며 Vision API 분석 시작.
   Future<void> _onCameraPressed() async {
     final photo = await CameraService.takePhoto();
     if (!mounted || photo == null) return;
@@ -54,13 +54,11 @@ class _RecipeRecommendationScreenState
     final confirmed = await _showPhotoPreview(File(photo.path));
     if (!mounted || confirmed != true) return;
 
-    // 확인했으면 채팅방으로 이동 (이미지 경로 전달)
-    // TODO: 추후 ApiService에 이미지 업로드 파라미터 연결
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('사진이 첨부되었습니다: ${photo.name}'),
-        duration: const Duration(seconds: 2),
-      ),
+    // 채팅방으로 이동 — imagePath 를 arguments 로 전달하면
+    // ChatInterfaceScreen 이 이미지 메시지 + Vision API 호출을 자동 진행.
+    Navigator.of(context).pushNamed(
+      AppRoutes.chatInterfaceScreen,
+      arguments: {'imagePath': photo.path},
     );
   }
 

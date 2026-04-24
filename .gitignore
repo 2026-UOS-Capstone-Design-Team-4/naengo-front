@@ -9,3 +9,7 @@
 /.idea/.wiseGPT/
 /ios/Podfile
 /pubspec.lock
+
+# Google Cloud service account credentials — NEVER commit
+/assets/credentials/*.json
+!/assets/credentials/README.md

@@ -8,6 +8,7 @@ import '../../models/chat_message.dart';
 import '../../models/chat_room.dart';
 import '../../services/api_service.dart';
 import '../../services/camera_service.dart';
+import '../../services/vision_service.dart';
 import '../../widgets/custom_image_view.dart';
 import '../recipe_management_screen/recipe_management_screen.dart';
 
@@ -77,6 +78,13 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
       if (args is String && args.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _sendInitialMessage(args);
+        });
+      } else if (args is Map &&
+          args['imagePath'] is String &&
+          (args['imagePath'] as String).isNotEmpty) {
+        final path = args['imagePath'] as String;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _sendImageMessage(File(path));
         });
       }
     }
@@ -157,7 +165,7 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
     _scrollToBottom();
   }
 
-  /// 카메라를 열어 사진 촬영 → 미리보기 → 확인 시 메시지로 추가.
+  /// 카메라를 열어 사진 촬영 → 미리보기 → 확인 → Vision API 분석.
   Future<void> _onCameraPressed() async {
     if (_isLoading) return;
     final photo = await CameraService.takePhoto();
@@ -166,14 +174,50 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
     final confirmed = await _showPhotoPreview(File(photo.path));
     if (!mounted || confirmed != true) return;
 
-    // 현재는 텍스트 메시지로 '[사진]' 프리픽스만 추가.
-    // TODO: ApiService가 이미지 업로드 지원 시 multipart 요청으로 교체.
+    await _sendImageMessage(File(photo.path));
+  }
+
+  /// 이미지 메시지 전송 → Vision API 호출 → AI 응답 추가.
+  Future<void> _sendImageMessage(File imageFile) async {
+    // 1. 사용자 쪽에 이미지 메시지 추가
     _addMessage(ChatMessage(
-      text: '[사진] ${photo.name}',
       isMe: true,
       sentAt: DateTime.now(),
+      imagePath: imageFile.path,
     ));
+
+    // 첫 이미지 메시지라면 방 제목을 업데이트 (파일명 대신 '사진 분석')
+    if (!_titleUpdated) {
+      _titleUpdated = true;
+      MockDataService.updateRoomTitle(_currentRoom.roomId, '사진으로 재료 인식');
+      setState(() {
+        _currentRoom = _currentRoom.copyWith(title: '사진으로 재료 인식');
+      });
+    }
+
+    setState(() => _isLoading = true);
     _scrollToBottom();
+
+    // 2. Vision API 호출
+    try {
+      final ingredients = await VisionService.detectIngredients(imageFile);
+      if (!mounted) return;
+
+      final replyText = VisionService.formatAsMessage(ingredients);
+      _addMessage(
+        ChatMessage(text: replyText, isMe: false, sentAt: DateTime.now()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _addMessage(ChatMessage(
+        text: '사진을 분석하는 중에 문제가 생겼어요. 잠시 후 다시 시도해주세요.',
+        isMe: false,
+        sentAt: DateTime.now(),
+      ));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+      _scrollToBottom();
+    }
   }
 
   Future<bool?> _showPhotoPreview(File file) {
@@ -513,32 +557,95 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
             ),
           ],
           Flexible(
-            child: Container(
-              padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 14.h),
-              decoration: BoxDecoration(
-                color: message.isMe ? appTheme.red_100 : appTheme.red_50,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(message.isMe ? 20.0 : 4.0),
-                  topRight: Radius.circular(20.0),
-                  bottomLeft: Radius.circular(20.0),
-                  bottomRight: Radius.circular(message.isMe ? 4.0 : 20.0),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: appTheme.red_A200.withAlpha(51),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
+            child: message.hasImage
+                ? _buildImageBubble(message)
+                : _buildTextBubble(message),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextBubble(ChatMessage message) {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 14.h),
+      decoration: BoxDecoration(
+        color: message.isMe ? appTheme.red_100 : appTheme.red_50,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(message.isMe ? 20.0 : 4.0),
+          topRight: Radius.circular(20.0),
+          bottomLeft: Radius.circular(20.0),
+          bottomRight: Radius.circular(message.isMe ? 4.0 : 20.0),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: appTheme.red_A200.withAlpha(51),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Text(
+        message.text,
+        style: TextStyleHelper.instance.body15MediumNotoSansKR
+            .copyWith(fontSize: 12.fSize),
+      ),
+    );
+  }
+
+  Widget _buildImageBubble(ChatMessage message) {
+    final radius = BorderRadius.only(
+      topLeft: Radius.circular(message.isMe ? 20.0 : 4.0),
+      topRight: Radius.circular(20.0),
+      bottomLeft: Radius.circular(20.0),
+      bottomRight: Radius.circular(message.isMe ? 4.0 : 20.0),
+    );
+
+    return Container(
+      constraints: BoxConstraints(maxWidth: 220.h),
+      decoration: BoxDecoration(
+        borderRadius: radius,
+        boxShadow: [
+          BoxShadow(
+            color: appTheme.red_A200.withAlpha(51),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: GestureDetector(
+          onTap: () => _showFullImage(message.imagePath!),
+          child: Image.file(
+            File(message.imagePath!),
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              padding: EdgeInsets.all(16.h),
+              color: appTheme.red_50,
               child: Text(
-                message.text,
+                '이미지를 불러올 수 없습니다.',
                 style: TextStyleHelper.instance.body15MediumNotoSansKR
                     .copyWith(fontSize: 12.fSize),
               ),
             ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  void _showFullImage(String path) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (ctx) => GestureDetector(
+        onTap: () => Navigator.of(ctx).pop(),
+        child: InteractiveViewer(
+          child: Center(
+            child: Image.file(File(path)),
+          ),
+        ),
       ),
     );
   }
