@@ -57,6 +57,17 @@ class MockDataService {
     }
   }
 
+  /// 백엔드가 부여한 정수 room_id 를 채팅방에 저장.
+  /// `NaengoApi` 의 `event: room` 도착 시 호출 → 이후 같은 방으로 라우팅 가능하게 함.
+  static void updateServerRoomId(String roomId, int serverRoomId) {
+    final index = chatRooms.indexWhere((r) => r.roomId == roomId);
+    if (index != -1) {
+      chatRooms[index] = chatRooms[index].copyWith(
+        serverRoomId: serverRoomId,
+      );
+    }
+  }
+
   /// 채팅방 삭제 (메시지도 함께 삭제)
   static void removeRoom(String roomId) {
     chatRooms.removeWhere((r) => r.roomId == roomId);

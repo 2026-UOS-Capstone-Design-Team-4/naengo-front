@@ -1,33 +1,12 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+// ⚠️ DEPRECATED — 이 파일은 더 이상 사용되지 않습니다.
+//
+// 기존 MindLogic FactChat 게이트웨이 호출은 팀 자체 백엔드(Naengo API) 로 대체됐습니다.
+// 새 구현은 `lib/services/naengo_api_service.dart` 의 `NaengoApi` 를 사용하세요.
+//
+// 호환성을 위해 빈 클래스를 남겨두지만, 신규 코드에서 임포트하지 마세요.
+// 이 파일은 다음 정리 PR 에서 제거됩니다.
 
+@Deprecated('Use NaengoApi from naengo_api_service.dart instead')
 class ApiService {
-  static const apiKey = 'LhLJSLVlUHlphs6tNXzIeRz4vwDjWIiQ';
-
-  static Future<String> sendMessage(String message) async {
-    final url = Uri.parse(
-      'https://factchat-cloud.mindlogic.ai/v1/gateway/chat/completions/',
-    );
-
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $apiKey',
-      },
-      body: jsonEncode({
-        "model": "claude-sonnet-4-6",
-        "messages": [
-          {"role": "user", "content": message},
-        ],
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data['choices'][0]['message']['content'];
-    } else {
-      throw Exception(response.body);
-    }
-  }
+  ApiService._();
 }

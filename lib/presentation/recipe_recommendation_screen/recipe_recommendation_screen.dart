@@ -46,7 +46,9 @@ class _RecipeRecommendationScreenState
     }
   }
 
-  /// 카메라를 열어 사진을 촬영하고 미리보기 확인.
+  /// 카메라 → 촬영 → 미리보기 → 채팅방으로 진입.
+  /// imagePath 를 arguments 로 넘기면 ChatInterfaceScreen 이 자동으로 첫 메시지로
+  /// 사진을 Naengo API 에 전송하고 응답을 스트리밍.
   Future<void> _onCameraPressed() async {
     final photo = await CameraService.takePhoto();
     if (!mounted || photo == null) return;
@@ -54,45 +56,86 @@ class _RecipeRecommendationScreenState
     final confirmed = await _showPhotoPreview(File(photo.path));
     if (!mounted || confirmed != true) return;
 
-    // 확인했으면 채팅방으로 이동 (이미지 경로 전달)
-    // TODO: 추후 ApiService에 이미지 업로드 파라미터 연결
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('사진이 첨부되었습니다: ${photo.name}'),
-        duration: const Duration(seconds: 2),
-      ),
+    Navigator.of(context).pushNamed(
+      AppRoutes.chatInterfaceScreen,
+      arguments: {'imagePath': photo.path},
     );
   }
 
-  /// 촬영한 사진 미리보기 다이얼로그.
+  /// 촬영한 사진 미리보기 다이얼로그. (앱 브랜드 톤과 동일한 컬러로 통일)
   Future<bool?> _showPhotoPreview(File file) {
+    const primary = Color(0xFFFF5252);   // 채팅 입력창 테두리 / 환영 메시지와 동일
+    const tint = Color(0xFFFFF8F8);      // 살짝 분홍빛 배경 틴트
+    const darkText = Color(0xFF1A1A1A);
+
     return showDialog<bool>(
       context: context,
+      barrierColor: Colors.black54,
       builder: (ctx) => Dialog(
-        backgroundColor: Colors.white,
+        backgroundColor: tint,
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12, top: 4),
+                child: Text(
+                  '이 사진으로 보낼까요?',
+                  style: TextStyle(
+                    color: darkText,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
               ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 child: Image.file(file, fit: BoxFit.cover),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(false),
-                    child: const Text('다시 찍기'),
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: primary,
+                        backgroundColor: Colors.white,
+                        side: const BorderSide(color: primary, width: 1.2),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text(
+                        '다시 찍기',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
                   ),
-                  ElevatedButton(
-                    onPressed: () => Navigator.of(ctx).pop(true),
-                    child: const Text('사용'),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text(
+                        '사용',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
                   ),
                 ],
               ),
