@@ -68,10 +68,45 @@ class MockDataService {
     }
   }
 
-  /// 채팅방 삭제 (메시지도 함께 삭제)
+  /// 사용자가 삭제한 백엔드 방의 server_room_id 를 보관하는 hide set.
+  ///
+  /// 백엔드에 DELETE 엔드포인트가 없어서 mergeServerRooms 가 매번 같은 방을 다시
+  /// 가져옴. 그 사이 사용자가 삭제했다면 표시되면 안 됨 → 이 set 으로 필터링.
+  ///
+  /// ⚠️ 메모리에만 유지 — 앱 재시작 시 비워짐. 추후 SharedPreferences 영속화 필요.
+  static final Set<int> hiddenServerRoomIds = <int>{};
+
+  /// 채팅방 삭제 (메시지도 함께 삭제).
+  /// 백엔드 방이면 server_room_id 를 `hiddenServerRoomIds` 에 추가해
+  /// 다음 동기화 후에도 다시 안 나타나도록 함.
   static void removeRoom(String roomId) {
-    chatRooms.removeWhere((r) => r.roomId == roomId);
+    final idx = chatRooms.indexWhere((r) => r.roomId == roomId);
+    if (idx != -1) {
+      final sid = chatRooms[idx].serverRoomId;
+      if (sid != null) hiddenServerRoomIds.add(sid);
+      chatRooms.removeAt(idx);
+    }
     roomMessages.remove(roomId);
+  }
+
+  /// 백엔드 `GET /chat/rooms` 응답으로 `chatRooms` 캐시 갱신.
+  ///
+  /// 정책:
+  ///   - 서버에서 받은 방은 source of truth → 그대로 반영
+  ///   - 아직 첫 메시지를 안 보낸 로컬 전용 방 (serverRoomId == null) 은 보존
+  ///   - 사용자가 삭제한 방 (`hiddenServerRoomIds`) 은 필터링
+  ///
+  /// 결과는 `updatedAt` 내림차순 정렬.
+  static void mergeServerRooms(List<ChatRoom> serverRooms) {
+    final pending = chatRooms
+        .where((r) => r.serverRoomId == null)
+        .toList(growable: false);
+    final visibleServer = serverRooms.where(
+      (r) => r.serverRoomId == null ||
+          !hiddenServerRoomIds.contains(r.serverRoomId),
+    );
+    chatRooms = [...pending, ...visibleServer]
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
   }
 
   // ──────────────────────────────────────────────
@@ -90,6 +125,13 @@ class MockDataService {
   static void addMessage(String roomId, ChatMessage message) {
     roomMessages.putIfAbsent(roomId, () => []);
     roomMessages[roomId]!.add(message);
+  }
+
+  /// 백엔드 `GET /chat/rooms/{id}` 응답으로 방의 메시지 캐시 통째로 교체.
+  /// 새 List 인스턴스로 갈아끼우므로, 기존 list 참조를 들고 있던 화면은
+  /// `getMessages()` 로 새 참조를 다시 받아야 함.
+  static void replaceMessages(String roomId, List<ChatMessage> messages) {
+    roomMessages[roomId] = List<ChatMessage>.from(messages);
   }
 
   // ──────────────────────────────────────────────

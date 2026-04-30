@@ -223,8 +223,13 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
   }
 
   Widget _buildRecipeCard(RecipeItem recipe) {
-    return Container(
-      height: 113.h,
+    // 높이를 고정(`height: 113.h`) 하지 않고 **최소** 높이만 지정.
+    // 좋아요/북마크 토글 후 자식 위젯 intrinsic 사이즈가 미세하게 (~0.3px) 변하면
+    // 고정 높이로는 BOTTOM OVERFLOWED 가 떴음. 최소 높이로 두면 카드가 자연스럽게
+    // 늘어나면서 오버플로우 없이 일관된 비주얼 유지.
+    return ConstrainedBox(
+      constraints: BoxConstraints(minHeight: 113.h),
+      child: Container(
       padding: EdgeInsets.all(12.h),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -264,6 +269,8 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   recipe.title,
@@ -339,6 +346,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

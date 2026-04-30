@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
 import '../../data/mock_data_service.dart';
 import '../../models/chat_room.dart';
+import '../../services/naengo_api_service.dart';
 import '../../widgets/custom_image_view.dart';
 
 class RecipeManagementScreen extends StatefulWidget {
@@ -29,6 +31,41 @@ class RecipeManagementScreen extends StatefulWidget {
 
 class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
   bool _isChatExpanded = false;
+
+  /// 백엔드에서 채팅방 목록을 fetching 중인지.
+  bool _isLoadingRooms = false;
+
+  /// 마지막 fetch 실패 사유 (null = 성공 또는 아직 시도 안 함).
+  String? _loadError;
+
+  @override
+  void initState() {
+    super.initState();
+    // 패널 열리자마자 백엔드 동기화 — 이전 채팅들이 즉시 표시되도록.
+    _refreshRoomsFromServer();
+  }
+
+  /// 백엔드에서 채팅방 목록을 새로 받아와 `MockDataService` cache 갱신.
+  /// 실패해도 앱 죽이지 않고 기존 cache 그대로 보여줌 + 작은 에러 안내.
+  Future<void> _refreshRoomsFromServer() async {
+    setState(() {
+      _isLoadingRooms = true;
+      _loadError = null;
+    });
+    try {
+      final rooms = await NaengoApi.listRooms();
+      if (!mounted) return;
+      MockDataService.mergeServerRooms(rooms);
+      setState(() => _isLoadingRooms = false);
+    } catch (e, st) {
+      debugPrint('[Sidebar] listRooms 실패: $e\n$st');
+      if (!mounted) return;
+      setState(() {
+        _isLoadingRooms = false;
+        _loadError = '목록 동기화 실패';
+      });
+    }
+  }
 
   void _toggleChatExpand() {
     setState(() => _isChatExpanded = !_isChatExpanded);
@@ -192,6 +229,20 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
                 color: appTheme.red_500,
               ),
             ),
+            // 로딩 중일 때만 작은 스피너 표시 (수동 새로고침 버튼은 없음 —
+            // 패널 열 때마다 자동 동기화)
+            if (_isLoadingRooms) ...[
+              SizedBox(width: 8.h),
+              SizedBox(
+                width: 12.h,
+                height: 12.h,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.5,
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(appTheme.red_500),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -202,13 +253,57 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
   Widget _buildChatList() {
     final rooms = MockDataService.chatRooms;
 
+    // 첫 로딩 중에 cache 도 비어있으면 로딩 인디케이터만 표시.
+    // (cache 가 있으면 일단 보여주고 백그라운드에서 갱신 — 깜빡임 방지)
+    if (_isLoadingRooms && rooms.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.only(left: 60.h, top: 12.h),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 14.h,
+              height: 14.h,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(appTheme.red_500),
+              ),
+            ),
+            SizedBox(width: 8.h),
+            Text(
+              '채팅방 불러오는 중…',
+              style: TextStyleHelper.instance.body15BoldNanumSquareAc.copyWith(
+                color: appTheme.red_500.withAlpha(150),
+                fontSize: 12.fSize,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (rooms.isEmpty) {
       return Padding(
         padding: EdgeInsets.only(left: 60.h, top: 8.h, bottom: 8.h),
-        child: Text(
-          '채팅 기록이 없습니다',
-          style: TextStyleHelper.instance.body15BoldNanumSquareAc
-              .copyWith(color: appTheme.red_500.withAlpha(100)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '채팅 기록이 없습니다',
+              style: TextStyleHelper.instance.body15BoldNanumSquareAc
+                  .copyWith(color: appTheme.red_500.withAlpha(100)),
+            ),
+            if (_loadError != null) ...[
+              SizedBox(height: 4.h),
+              Text(
+                '⚠️ $_loadError',
+                style: TextStyle(
+                  fontSize: 11.fSize,
+                  color: appTheme.red_500.withAlpha(150),
+                ),
+              ),
+            ],
+          ],
         ),
       );
     }
@@ -216,8 +311,23 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
     return Scrollbar(
       child: ListView.builder(
         padding: EdgeInsets.only(top: 4.h, bottom: 8.h),
-        itemCount: rooms.length,
-        itemBuilder: (context, index) => _buildRoomItem(rooms[index]),
+        itemCount: rooms.length + (_loadError != null ? 1 : 0),
+        itemBuilder: (context, index) {
+          // cache 는 있는데 fetch 실패한 경우 — 마지막에 안내 한 줄
+          if (_loadError != null && index == rooms.length) {
+            return Padding(
+              padding: EdgeInsets.only(left: 60.h, top: 8.h, bottom: 8.h),
+              child: Text(
+                '⚠️ $_loadError (캐시 표시 중)',
+                style: TextStyle(
+                  fontSize: 11.fSize,
+                  color: appTheme.red_500.withAlpha(150),
+                ),
+              ),
+            );
+          }
+          return _buildRoomItem(rooms[index]);
+        },
       ),
     );
   }

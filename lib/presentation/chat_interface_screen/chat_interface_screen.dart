@@ -80,6 +80,14 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
       _titleUpdated = true;
       _serverRoomId = args.serverRoomId;
       _messages = MockDataService.getMessages(_currentRoom.roomId);
+
+      // 백엔드에 등록된 방이면 최신 내역을 가져옴 (캐시는 우선 노출).
+      // 실패 시엔 기존 캐시 그대로 두고 조용히 로그만 남김.
+      if (_serverRoomId != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _loadHistoryFromServer(_serverRoomId!);
+        });
+      }
     } else {
       // 새 채팅방 생성
       _currentRoom = MockDataService.createRoom();
@@ -265,6 +273,29 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
         _finishStreamingWithError(aiMessage, e.toString());
       },
     );
+  }
+
+  /// 백엔드에서 채팅방 메시지 내역을 받아와 캐시 교체.
+  /// 진입 시 1회 호출. 실패 시 기존 캐시 유지 + 디버그 로그.
+  ///
+  /// ⚠️ 백엔드는 텍스트 content 만 저장하므로 사용자가 과거에 보낸 사진은
+  ///    내역에서 사라짐 (현재 v1 제약).
+  Future<void> _loadHistoryFromServer(int roomId) async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final history = await NaengoApi.getRoomHistory(roomId);
+      if (!mounted) return;
+      MockDataService.replaceMessages(_currentRoom.roomId, history);
+      // replaceMessages 가 새 List 인스턴스를 만들므로 참조를 다시 받아야 함.
+      _messages = MockDataService.getMessages(_currentRoom.roomId);
+      setState(() => _isLoading = false);
+      _scrollToBottom();
+    } catch (e, st) {
+      debugPrint('[Chat] history load 실패: $e\n$st');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+    }
   }
 
   /// 스트리밍 실패 시 자리표시자 메시지를 에러 안내로 마무리.

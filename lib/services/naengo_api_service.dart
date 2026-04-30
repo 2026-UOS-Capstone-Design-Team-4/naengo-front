@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../models/chat_message.dart';
+import '../models/chat_room.dart';
 import '../models/recipe.dart';
 
 /// Naengo (냉고) 백엔드 채팅 API 클라이언트.
@@ -63,6 +65,79 @@ class NaengoApi {
     final bytes = await file.readAsBytes();
     final b64 = base64Encode(bytes);
     return 'data:$mime;base64,$b64';
+  }
+
+  // ───────────────────────── 동기화 (GET) API ─────────────────────────
+
+  /// 사용자의 채팅방 목록 조회 (`GET /api/v1/chat/rooms`).
+  /// `updated_at` 내림차순으로 정렬돼 옴.
+  ///
+  /// 반환되는 `ChatRoom` 의 `roomId` 는 `'server-{id}'` 포맷 (로컬 키),
+  /// `serverRoomId` 에 백엔드 정수 ID 가 그대로 들어있음.
+  static Future<List<ChatRoom>> listRooms() async {
+    final uri = Uri.parse('$baseUrl/api/v1/chat/rooms');
+    final r = await http.get(uri);
+    if (r.statusCode != 200) {
+      throw HttpException(
+        'listRooms ${r.statusCode}: ${r.body}',
+        uri: uri,
+      );
+    }
+    final list = jsonDecode(utf8.decode(r.bodyBytes)) as List;
+    return list
+        .map((j) => _roomFromJson(j as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  /// 특정 채팅방의 전체 메시지 내역 조회 (`GET /api/v1/chat/rooms/{room_id}`).
+  /// 시간순(오래된 것 → 최신)으로 반환됨.
+  ///
+  /// AI 응답에 레시피가 첨부됐었다면 `ChatMessage.recipes` 가 채워짐.
+  /// ⚠️ 백엔드는 `content` 텍스트만 저장하므로 사용자가 과거에 보낸 이미지는 복원되지 않음
+  ///    (현재 v1 제약, 추후 백엔드가 image_url 컬럼 추가하면 매핑 가능).
+  static Future<List<ChatMessage>> getRoomHistory(int roomId) async {
+    final uri = Uri.parse('$baseUrl/api/v1/chat/rooms/$roomId');
+    final r = await http.get(uri);
+    if (r.statusCode != 200) {
+      throw HttpException(
+        'getRoomHistory ${r.statusCode}: ${r.body}',
+        uri: uri,
+      );
+    }
+    final list = jsonDecode(utf8.decode(r.bodyBytes)) as List;
+    return list
+        .map((j) => _messageFromJson(j as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  /// `ChatRoomResponse` → 로컬 `ChatRoom` 변환.
+  static ChatRoom _roomFromJson(Map<String, dynamic> j) {
+    final id = j['room_id'] as int;
+    return ChatRoom(
+      roomId: 'server-$id',
+      userId: 1, // 백엔드 임시 user_id=1, 인증 도입 시 갱신
+      title: (j['title'] as String?)?.trim().isNotEmpty == true
+          ? j['title'] as String
+          : '새 채팅',
+      createdAt: DateTime.parse(j['created_at'] as String),
+      updatedAt: DateTime.parse(j['updated_at'] as String),
+      serverRoomId: id,
+    );
+  }
+
+  /// `ChatMessageResponse` → 로컬 `ChatMessage` 변환.
+  static ChatMessage _messageFromJson(Map<String, dynamic> j) {
+    final role = j['role'] as String? ?? 'model';
+    final recipesJson = j['recipes'] as List?;
+    return ChatMessage(
+      text: j['content'] as String? ?? '',
+      isMe: role == 'user',
+      sentAt: DateTime.parse(j['created_at'] as String),
+      recipes: recipesJson
+          ?.map((r) => Recipe.fromJson((r as Map).cast<String, dynamic>()))
+          .toList(growable: false),
+      isStreaming: false,
+    );
   }
 
   // ───────────────────────── 내부 구현 ─────────────────────────
