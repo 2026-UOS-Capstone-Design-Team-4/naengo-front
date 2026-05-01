@@ -19,20 +19,20 @@ class TextStyleHelper {
     fontSize: 30.fSize,
     fontWeight: FontWeight.w800,
     fontFamily: 'Tmoney RoundWind',
-    color: appTheme.red_500,
+    color: appTheme.mainUI,
   );
 
   TextStyle get headline24BoldUrbanist => TextStyle(
     fontSize: 24.fSize,
     fontWeight: FontWeight.w700,
     fontFamily: 'Urbanist',
-    color: appTheme.red_500,
+    color: appTheme.mainUI,
   );
 
   TextStyle get headline24Bold => TextStyle(
     fontSize: 24.fSize,
     fontWeight: FontWeight.w700,
-    color: appTheme.red_500,
+    color: appTheme.mainUI,
   );
 
   // Title Styles
@@ -48,28 +48,28 @@ class TextStyleHelper {
     fontSize: 20.fSize,
     fontWeight: FontWeight.w800,
     fontFamily: 'NanumSquare ac',
-    color: appTheme.red_500,
+    color: appTheme.mainUI,
   );
 
   TextStyle get title20ExtraBoldTmoneyRoundWind => TextStyle(
     fontSize: 20.fSize,
     fontWeight: FontWeight.w800,
     fontFamily: 'Tmoney RoundWind',
-    color: appTheme.red_500,
+    color: appTheme.mainUI,
   );
 
   TextStyle get title18BoldNanumSquareAc => TextStyle(
     fontSize: 18.fSize,
     fontWeight: FontWeight.w700,
     fontFamily: 'NanumSquare ac',
-    color: appTheme.black_900_01,
+    color: appTheme.text,
   );
 
   TextStyle get title18MediumInter => TextStyle(
     fontSize: 18.fSize,
     fontWeight: FontWeight.w500,
     fontFamily: 'Inter',
-    color: appTheme.black_900_01,
+    color: appTheme.text,
   );
 
   // Body Styles
@@ -79,28 +79,28 @@ class TextStyleHelper {
     fontSize: 15.fSize,
     fontWeight: FontWeight.w700,
     fontFamily: 'NanumSquare ac',
-    color: appTheme.black_900,
+    color: appTheme.text,
   );
 
   TextStyle get body15MediumNotoSansKR => TextStyle(
     fontSize: 15.fSize,
     fontWeight: FontWeight.w500,
     fontFamily: 'Noto Sans KR',
-    color: appTheme.gray_900,
+    color: appTheme.text,
   );
 
   TextStyle get body15RegularNanumSquareAc => TextStyle(
     fontSize: 15.fSize,
     fontWeight: FontWeight.w400,
     fontFamily: 'NanumSquare ac',
-    color: appTheme.black_900,
+    color: appTheme.text,
   );
 
   TextStyle get body15RegularTmoneyRoundWind => TextStyle(
     fontSize: 15.fSize,
     fontWeight: FontWeight.w400,
     fontFamily: 'Tmoney RoundWind',
-    color: appTheme.red_500,
+    color: appTheme.mainUI,
   );
 
   TextStyle get body15NanumSquareAc =>
@@ -109,7 +109,7 @@ class TextStyleHelper {
   TextStyle get body15Regular => TextStyle(
     fontSize: 15.fSize,
     fontWeight: FontWeight.w400,
-    color: appTheme.black_900,
+    color: appTheme.text,
   );
 
   // Label Styles
@@ -119,7 +119,7 @@ class TextStyleHelper {
     fontSize: 10.fSize,
     fontWeight: FontWeight.w500,
     fontFamily: 'Noto Sans KR',
-    color: appTheme.red_A200,
+    color: appTheme.basis,
   );
 
   // Other Styles

@@ -4,9 +4,9 @@ import '../models/chat_message.dart';
 import '../models/chat_room.dart';
 import '../models/recipe_item.dart';
 import '../models/user.dart';
+import '../models/user_profile.dart';
 
 /// 백엔드 연결 전 테스트용 목 데이터.
-/// DB정리.md 스키마를 기준으로 작성됨.
 class MockDataService {
   MockDataService._();
 
@@ -17,13 +17,32 @@ class MockDataService {
   // ──────────────────────────────────────────────
   // 현재 로그인된 사용자 (Users 테이블)
   // ──────────────────────────────────────────────
-  static final AppUser currentUser = AppUser(
+  static AppUser currentUser = AppUser(
     userId: 1,
     email: 'test@naengo.com',
     nickname: '냉장고지기',
     role: 'USER',
+    isActive: true,
     provider: 'LOCAL',
     createdAt: DateTime(2025, 1, 10),
+  );
+
+  // ──────────────────────────────────────────────
+  // 현재 로그인된 사용자 프로필 (User_Profiles 테이블)
+  // ──────────────────────────────────────────────
+  static UserProfile currentProfile = UserProfile(
+    userId: 1,
+    userInput: [],
+    allergies: [],
+    dietaryRestrictions: [],
+    preferredIngredients: [],
+    dislikedIngredients: [],
+    preferredCategories: [],
+    tasteKeywords: [],
+    cookingSkill: 'normal',
+    preferredCookingTime: 30,
+    servingSize: 2.0,
+    updatedAt: DateTime(2025, 1, 10),
   );
 
   // ──────────────────────────────────────────────

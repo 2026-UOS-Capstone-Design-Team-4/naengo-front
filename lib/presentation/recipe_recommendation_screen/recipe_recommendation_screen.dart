@@ -64,9 +64,9 @@ class _RecipeRecommendationScreenState
 
   /// 촬영한 사진 미리보기 다이얼로그. (앱 브랜드 톤과 동일한 컬러로 통일)
   Future<bool?> _showPhotoPreview(File file) {
-    const primary = Color(0xFFFF5252);   // 채팅 입력창 테두리 / 환영 메시지와 동일
-    const tint = Color(0xFFFFF8F8);      // 살짝 분홍빛 배경 틴트
-    const darkText = Color(0xFF1A1A1A);
+    final primary = appTheme.basis;
+    final tint = appTheme.maximumlight;
+    final darkText = appTheme.text;
 
     return showDialog<bool>(
       context: context,
@@ -82,8 +82,8 @@ class _RecipeRecommendationScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Padding(
-                padding: EdgeInsets.only(bottom: 12, top: 4),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12, top: 4),
                 child: Text(
                   '이 사진으로 보낼까요?',
                   style: TextStyle(
@@ -105,7 +105,7 @@ class _RecipeRecommendationScreenState
                       style: OutlinedButton.styleFrom(
                         foregroundColor: primary,
                         backgroundColor: Colors.white,
-                        side: const BorderSide(color: primary, width: 1.2),
+                        side: BorderSide(color: primary, width: 1.2),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
@@ -167,14 +167,14 @@ class _RecipeRecommendationScreenState
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Color(0xFFFFECEC),
-            Color(0xFFFFF8F8),
-            Color(0xFFFFFFFF),
+            appTheme.verylight,
+            appTheme.maximumlight,
+            appTheme.background,
           ],
         ),
       ),
@@ -210,13 +210,13 @@ class _RecipeRecommendationScreenState
         Text(
           "안녕하세요, 냉고입니다.",
           style: TextStyleHelper.instance.title20ExtraBoldTmoneyRoundWind
-              .copyWith(color: const Color(0xFFFF5252)),
+              .copyWith(color: appTheme.basis),
         ),
         SizedBox(height: 4.h),
         Text(
           "오늘 뭐 해먹을까요?",
           style: TextStyleHelper.instance.headline30ExtraBoldTmoneyRoundWind
-              .copyWith(color: const Color(0xFF1A1A1A)),
+              .copyWith(color: appTheme.text),
         ),
       ],
     );
@@ -229,7 +229,7 @@ class _RecipeRecommendationScreenState
         Text(
           "인기 레시피 추천",
           style: TextStyleHelper.instance.body15Regular.copyWith(
-            color: const Color(0xFF999999),
+            color: appTheme.disabled,
           ),
         ),
         SizedBox(height: 12.h),
@@ -262,9 +262,9 @@ class _RecipeRecommendationScreenState
         padding: EdgeInsets.symmetric(horizontal: 16.h, vertical: 12.h),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: appTheme.background,
             borderRadius: BorderRadius.circular(30.h),
-            border: Border.all(color: const Color(0xFFFF5252), width: 1.0),
+            border: Border.all(color: appTheme.basis, width: 1.0),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -289,7 +289,7 @@ class _RecipeRecommendationScreenState
                   keyboardType: TextInputType.multiline,
                   onSubmitted: (_) => _onSendMessagePressed(),
                   style: TextStyleHelper.instance.body15NanumSquareAc.copyWith(
-                    color: const Color(0xFF1A1A1A),
+                    color: appTheme.text,
                     fontSize: 12.fSize,
                   ),
                   decoration: InputDecoration(
@@ -298,7 +298,7 @@ class _RecipeRecommendationScreenState
                         TextStyleHelper.instance.body15RegularNanumSquareAc
                             .copyWith(
                       fontSize: 12.fSize,
-                      color: const Color(0xFFAAAAAA),
+                      color: appTheme.disabled,
                     ),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(vertical: 10.h),

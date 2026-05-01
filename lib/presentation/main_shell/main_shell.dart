@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
-import '../../widgets/custom_image_view.dart';
+import '../../widgets/custom_app_bar.dart';
 import '../recipe_board_screen/recipe_board_screen.dart';
 import '../recipe_management_screen/recipe_management_screen.dart';
 import '../recipe_recommendation_screen/recipe_recommendation_screen.dart';
@@ -106,25 +106,32 @@ class _MainShellState extends State<MainShell>
       body: Container(
         // 현재 페이지에 맞는 배경을 앱바 영역까지 확장
         decoration: _currentPage == _MainPage.recommendation
-            ? const BoxDecoration(
+            ? BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Color(0xFFFFECEC),
-                    Color(0xFFFFF8F8),
-                    Color(0xFFFFFFFF),
+                    appTheme.verylight,
+                    appTheme.maximumlight,
+                    appTheme.background,
                   ],
                 ),
               )
-            : const BoxDecoration(color: Colors.white),
+            : BoxDecoration(color: appTheme.background),
         child: Stack(
           children: [
             SafeArea(
               child: Column(
                 children: [
-                  // ── 투명 앱바 ──────────────────────────────
-                  _buildAppBar(),
+                  // ── 앱바 ───────────────────────────────────
+                  NaengoAppBar(
+                    leadingIcon: ImageConstant.imgSidebarButton,
+                    onLeadingPressed: _openPanel,
+                    title: _title,
+                    actionIcon: ImageConstant.imgPersonOutline,
+                    onActionPressed: () => Navigator.of(context)
+                        .pushNamed(AppRoutes.profileSettingsScreen),
+                  ),
                   // ── 화면 콘텐츠 (슬라이드 없음) ────────────
                   Expanded(
                     child: IndexedStack(
@@ -195,56 +202,4 @@ class _MainShellState extends State<MainShell>
     );
   }
 
-  Widget _buildAppBar() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.h, vertical: 12.h),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: _openPanel,
-            child: CustomImageView(
-              imagePath: ImageConstant.imgSidebarButton,
-              width: 28.h,
-              height: 24.h,
-            ),
-          ),
-          SizedBox(width: 12.h),
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                _title,
-                style: TextStyleHelper.instance.headline24BoldUrbanist.copyWith(
-                  color: const Color(0xFFFF5252),
-                  fontSize: 20.fSize,
-                ),
-              ),
-            ),
-          ),
-          Container(
-            width: 40.h,
-            height: 40.h,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFFF5252).withAlpha(38),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Center(
-              child: CustomImageView(
-                imagePath: ImageConstant.imgPersonOutline,
-                height: 24.h,
-                width: 24.h,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

@@ -85,8 +85,8 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
   Widget _buildTabBar() {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16.h),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: appTheme.verylight, width: 1)),
       ),
       child: Row(
         children: [
@@ -106,7 +106,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: isActive ? const Color(0xFFFF5252) : Colors.transparent,
+            color: isActive ? appTheme.basis : Colors.transparent,
             width: 2,
           ),
         ),
@@ -114,7 +114,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
       child: Text(
         label,
         style: TextStyleHelper.instance.body15BoldNanumSquareAc.copyWith(
-          color: isActive ? const Color(0xFFFF5252) : const Color(0xFF999999),
+          color: isActive ? appTheme.basis : appTheme.disabled,
           fontSize: 13.fSize,
         ),
       ),
@@ -127,18 +127,18 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 10.h, vertical: 6.h),
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFFF5252), width: 1),
+          border: Border.all(color: appTheme.basis, width: 1),
           borderRadius: BorderRadius.circular(20.h),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.swap_vert, color: Color(0xFFFF5252), size: 14),
+            Icon(Icons.swap_vert, color: appTheme.basis, size: 14),
             SizedBox(width: 4.h),
             Text(
               'Sort',
               style: TextStyle(
-                color: const Color(0xFFFF5252),
+                color: appTheme.basis,
                 fontSize: 12.fSize,
                 fontWeight: FontWeight.w600,
               ),
@@ -148,7 +148,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
               _isSortDropdownOpen
                   ? Icons.keyboard_arrow_up
                   : Icons.keyboard_arrow_down,
-              color: const Color(0xFFFF5252),
+              color: appTheme.basis,
               size: 14,
             ),
           ],
@@ -167,7 +167,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
         child: Container(
           width: 120.h,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: appTheme.background,
             borderRadius: BorderRadius.circular(12.h),
           ),
           child: Column(
@@ -194,13 +194,13 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
         width: double.infinity,
         padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 16.h),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFFF5252) : Colors.white,
+          color: isSelected ? appTheme.basis : appTheme.background,
           borderRadius: BorderRadius.circular(12.h),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : const Color(0xFF333333),
+            color: isSelected ? Colors.white : appTheme.text,
             fontSize: 13.fSize,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
           ),
@@ -232,7 +232,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
       child: Container(
       padding: EdgeInsets.all(12.h),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: appTheme.background,
         borderRadius: BorderRadius.circular(12.h),
         boxShadow: [
           BoxShadow(
@@ -249,7 +249,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
             width: 76.h,
             height: 76.h,
             decoration: BoxDecoration(
-              color: const Color(0xFFFFB3B3),
+              color: appTheme.lightbasis,
               borderRadius: BorderRadius.circular(10.h),
             ),
             child: recipe.imageUrl != null
@@ -282,7 +282,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
                   recipe.ingredientsRaw,
                   style: TextStyle(
                     fontSize: 11.fSize,
-                    color: const Color(0xFF999999),
+                    color: appTheme.disabled,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -307,8 +307,8 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
                                 ? Icons.favorite
                                 : Icons.favorite_border,
                             color: recipe.isLiked
-                                ? const Color(0xFFFF5252)
-                                : const Color(0xFFCCCCCC),
+                                ? appTheme.basis
+                                : appTheme.cloudy,
                             size: 22.h,
                           ),
                           SizedBox(width: 3.h),
@@ -317,8 +317,8 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
                             style: TextStyle(
                               fontSize: 12.fSize,
                               color: recipe.isLiked
-                                  ? const Color(0xFFFF5252)
-                                  : const Color(0xFFCCCCCC),
+                                  ? appTheme.basis
+                                  : appTheme.cloudy,
                             ),
                           ),
                         ],
@@ -335,8 +335,8 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
                             ? Icons.bookmark
                             : Icons.bookmark_border,
                         color: recipe.isBookmarked
-                            ? const Color(0xFFFF5252)
-                            : const Color(0xFFCCCCCC),
+                            ? appTheme.basis
+                            : appTheme.cloudy,
                         size: 22.h,
                       ),
                     ),

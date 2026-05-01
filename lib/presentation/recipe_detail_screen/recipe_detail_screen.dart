@@ -43,7 +43,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: appTheme.background,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,7 +104,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
             onTap: () => Navigator.pop(context),
             child: Icon(
               Icons.chevron_left,
-              color: const Color(0xFFFF4040),
+              color: appTheme.mainUI,
               size: 32.h,
             ),
           ),
@@ -112,7 +112,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           Text(
             '상세보기',
             style: TextStyle(
-              color: const Color(0xFFFF4040),
+              color: appTheme.mainUI,
               fontSize: 22.fSize,
               fontWeight: FontWeight.w800,
               fontFamily: 'NanumSquare ac',
@@ -135,11 +135,11 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
             widget.recipe.imageUrl != null
                 ? Image.network(widget.recipe.imageUrl!, fit: BoxFit.cover)
                 : Container(
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Color(0xFFFFCDCD), Color(0xFFFFB3B3)],
+                        colors: [appTheme.lightbasis, appTheme.lightbasis],
                       ),
                     ),
                     child: Center(
@@ -167,7 +167,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       child: Text(
                         widget.recipe.title,
                         style: TextStyle(
-                          color: const Color(0xFFFF7878),
+                          color: appTheme.middle,
                           fontSize: 15.fSize,
                           fontWeight: FontWeight.w700,
                           fontFamily: 'NanumSquare ac',
@@ -180,7 +180,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       onTap: _toggleLike,
                       child: Icon(
                         _isLiked ? Icons.favorite : Icons.favorite_border,
-                        color: const Color(0xFFFF4040),
+                        color: appTheme.mainUI,
                         size: 24.h,
                       ),
                     ),
@@ -191,7 +191,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         _isBookmarked
                             ? Icons.bookmark
                             : Icons.bookmark_border,
-                        color: const Color(0xFFFF4040),
+                        color: appTheme.mainUI,
                         size: 24.h,
                       ),
                     ),
@@ -213,7 +213,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           widget.recipe.description ?? '작성자의 음식에 대한 간단한 설명',
           style: TextStyle(
             fontSize: 12.5.fSize,
-            color: const Color(0xFF222222),
+            color: appTheme.text,
             height: 1.5,
           ),
         ),
@@ -221,7 +221,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         Container(
           width: 30.h,
           height: 2.h,
-          color: const Color(0xFFFF4040),
+          color: appTheme.mainUI,
         ),
       ],
     );
@@ -234,7 +234,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         Text(
           title,
           style: TextStyle(
-            color: const Color(0xFFFF4040),
+            color: appTheme.mainUI,
             fontSize: 16.fSize,
             fontWeight: FontWeight.w800,
             fontFamily: 'NanumSquare ac',
@@ -245,7 +245,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           content,
           style: TextStyle(
             fontSize: 13.fSize,
-            color: const Color(0xFF222222),
+            color: appTheme.text,
             height: 1.6,
           ),
         ),

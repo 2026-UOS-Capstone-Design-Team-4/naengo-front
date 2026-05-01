@@ -4,6 +4,7 @@ import '../presentation/recipe_recommendation_screen/recipe_recommendation_scree
 import '../presentation/chat_interface_screen/chat_interface_screen.dart';
 import '../presentation/recipe_management_screen/recipe_management_screen.dart';
 import '../presentation/recipe_board_screen/recipe_board_screen.dart';
+import '../presentation/profile_settings_screen/profile_settings_screen.dart';
 
 class AppRoutes {
   static const String mainShell = '/';
@@ -11,6 +12,7 @@ class AppRoutes {
   static const String chatInterfaceScreen = '/chat_interface_screen';
   static const String recipeManagementScreen = '/recipe_management_screen';
   static const String recipeBoardScreen = '/recipe_board_screen';
+  static const String profileSettingsScreen = '/profile_settings_screen';
   static const String initialRoute = '/';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -31,6 +33,9 @@ class AppRoutes {
       case recipeBoardScreen:
         page = const RecipeBoardScreen();
         break;
+      case profileSettingsScreen:
+        page = const ProfileSettingsScreen();
+        break;
       default:
         page = const MainShell();
     }
@@ -44,6 +49,24 @@ class AppRoutes {
           return SlideTransition(
             position: Tween<Offset>(
               begin: const Offset(0.0, 1.0),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+      );
+    }
+
+    // ProfileSettings: 오른쪽에서 슬라이드
+    if (settings.name == profileSettingsScreen) {
+      return PageRouteBuilder(
+        settings: settings,
+        pageBuilder: (context, animation, secondaryAnimation) => page,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(1.0, 0.0),
               end: Offset.zero,
             ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
             child: child,

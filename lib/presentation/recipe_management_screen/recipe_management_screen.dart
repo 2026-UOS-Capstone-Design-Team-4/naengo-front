@@ -86,7 +86,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: appTheme.red_50,
+      backgroundColor: appTheme.verylight,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,7 +141,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
             padding: EdgeInsets.all(8.h),
             child: Icon(
               Icons.chevron_left,
-              color: appTheme.red_500,
+              color: appTheme.mainUI,
               size: 28.h,
             ),
           ),
@@ -170,7 +170,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
           bottom: 12.h,
         ),
         decoration: BoxDecoration(
-          color: isActive ? appTheme.red_500 : Colors.transparent,
+          color: isActive ? appTheme.mainUI : Colors.transparent,
           borderRadius: isActive
               ? BorderRadius.only(
                   topRight: Radius.circular(14.h),
@@ -190,7 +190,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
             Text(
               title,
               style: TextStyleHelper.instance.title18BoldNanumSquareAc.copyWith(
-                color: isActive ? Colors.white : appTheme.black_900_01,
+                color: isActive ? Colors.white : appTheme.text,
               ),
             ),
           ],
@@ -226,7 +226,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
               child: Icon(
                 Icons.keyboard_arrow_down,
                 size: 20.h,
-                color: appTheme.red_500,
+                color: appTheme.mainUI,
               ),
             ),
             // 로딩 중일 때만 작은 스피너 표시 (수동 새로고침 버튼은 없음 —
@@ -239,7 +239,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
                 child: CircularProgressIndicator(
                   strokeWidth: 1.5,
                   valueColor:
-                      AlwaysStoppedAnimation<Color>(appTheme.red_500),
+                      AlwaysStoppedAnimation<Color>(appTheme.mainUI),
                 ),
               ),
             ],
@@ -266,14 +266,14 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 valueColor:
-                    AlwaysStoppedAnimation<Color>(appTheme.red_500),
+                    AlwaysStoppedAnimation<Color>(appTheme.mainUI),
               ),
             ),
             SizedBox(width: 8.h),
             Text(
               '채팅방 불러오는 중…',
               style: TextStyleHelper.instance.body15BoldNanumSquareAc.copyWith(
-                color: appTheme.red_500.withAlpha(150),
+                color: appTheme.mainUI.withAlpha(150),
                 fontSize: 12.fSize,
               ),
             ),
@@ -291,7 +291,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
             Text(
               '채팅 기록이 없습니다',
               style: TextStyleHelper.instance.body15BoldNanumSquareAc
-                  .copyWith(color: appTheme.red_500.withAlpha(100)),
+                  .copyWith(color: appTheme.mainUI.withAlpha(100)),
             ),
             if (_loadError != null) ...[
               SizedBox(height: 4.h),
@@ -299,7 +299,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
                 '⚠️ $_loadError',
                 style: TextStyle(
                   fontSize: 11.fSize,
-                  color: appTheme.red_500.withAlpha(150),
+                  color: appTheme.mainUI.withAlpha(150),
                 ),
               ),
             ],
@@ -321,7 +321,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
                 '⚠️ $_loadError (캐시 표시 중)',
                 style: TextStyle(
                   fontSize: 11.fSize,
-                  color: appTheme.red_500.withAlpha(150),
+                  color: appTheme.mainUI.withAlpha(150),
                 ),
               ),
             );
@@ -346,7 +346,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
           right: 12.h,
         ),
         decoration: BoxDecoration(
-          color: isCurrent ? appTheme.red_500 : Colors.transparent,
+          color: isCurrent ? appTheme.mainUI : Colors.transparent,
           borderRadius: BorderRadius.only(
             topRight: Radius.circular(14.h),
             bottomRight: Radius.circular(14.h),
@@ -358,7 +358,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
               child: Text(
                 room.title,
                 style: TextStyleHelper.instance.body15BoldNanumSquareAc.copyWith(
-                  color: isCurrent ? Colors.white : appTheme.black_900_01,
+                  color: isCurrent ? Colors.white : appTheme.text,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

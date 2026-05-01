@@ -10,6 +10,7 @@ import '../../models/chat_room.dart';
 import '../../models/recipe.dart';
 import '../../services/camera_service.dart';
 import '../../services/naengo_api_service.dart';
+import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_image_view.dart';
 import '../recipe_management_screen/recipe_management_screen.dart';
 
@@ -328,9 +329,9 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
 
   Future<bool?> _showPhotoPreview(File file) {
     // 앱 브랜드 컬러. 채팅 입력창 테두리 / 환영 메시지와 동일.
-    const primary = Color(0xFFFF5252);
-    const tint = Color(0xFFFFF8F8); // 살짝 분홍빛 배경 틴트
-    const darkText = Color(0xFF1A1A1A);
+    final primary = appTheme.basis;
+    final tint = appTheme.maximumlight;
+    final darkText = appTheme.text;
 
     return showDialog<bool>(
       context: context,
@@ -346,8 +347,8 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Padding(
-                padding: EdgeInsets.only(bottom: 12, top: 4),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12, top: 4),
                 child: Text(
                   '이 사진으로 보낼까요?',
                   style: TextStyle(
@@ -369,7 +370,7 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
                       style: OutlinedButton.styleFrom(
                         foregroundColor: primary,
                         backgroundColor: Colors.white,
-                        side: const BorderSide(color: primary, width: 1.2),
+                        side: BorderSide(color: primary, width: 1.2),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
@@ -419,7 +420,7 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: appTheme.white_A700_01,
+      backgroundColor: appTheme.background,
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
@@ -427,7 +428,14 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
           SafeArea(
             child: Column(
               children: [
-                _buildAppBar(context),
+                NaengoAppBar(
+                  leadingIcon: ImageConstant.imgSidebarButton,
+                  onLeadingPressed: _openPanel,
+                  title: _currentRoom.title,
+                  actionIcon: ImageConstant.imgPersonOutline,
+                  onActionPressed: () => Navigator.of(context)
+                      .pushNamed(AppRoutes.profileSettingsScreen),
+                ),
                 Expanded(
                   child: _messages.isEmpty && !_isLoading
                       ? _buildEmptyState()
@@ -531,12 +539,12 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.chat_bubble_outline, size: 48, color: appTheme.red_200_7f),
+          Icon(Icons.chat_bubble_outline, size: 48, color: appTheme.cloudy.withAlpha(127)),
           SizedBox(height: 12.h),
           Text(
             '냉고에게 무엇이든 물어보세요!',
             style: TextStyleHelper.instance.body15MediumNotoSansKR.copyWith(
-              color: appTheme.red_200_7f,
+              color: appTheme.cloudy.withAlpha(127),
               fontSize: 12.fSize,
             ),
           ),
@@ -557,14 +565,14 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
             height: 32.h,
             margin: EdgeInsets.only(right: 8.h),
             decoration: BoxDecoration(
-              color: appTheme.red_A200,
+              color: appTheme.basis,
               shape: BoxShape.circle,
             ),
             child: Center(
               child: Text(
                 'AI',
                 style: TextStyle(
-                  color: appTheme.white_A700,
+                  color: appTheme.background,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                 ),
@@ -574,7 +582,7 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
           Container(
             padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.h),
             decoration: BoxDecoration(
-              color: appTheme.red_50,
+              color: appTheme.verylight,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(4.0),
                 topRight: Radius.circular(20.0),
@@ -590,14 +598,14 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
                   height: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(appTheme.red_A200),
+                    valueColor: AlwaysStoppedAnimation<Color>(appTheme.basis),
                   ),
                 ),
                 SizedBox(width: 8.h),
                 Text(
                   '답변 생성 중...',
                   style: TextStyleHelper.instance.body15MediumNotoSansKR
-                      .copyWith(color: appTheme.red_A200, fontSize: 12.fSize),
+                      .copyWith(color: appTheme.basis, fontSize: 12.fSize),
                 ),
               ],
             ),
@@ -607,60 +615,6 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
     );
   }
 
-  Widget _buildAppBar(BuildContext context) {
-    return Container(
-      height: 56.h,
-      padding: EdgeInsets.symmetric(horizontal: 14.h),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: _openPanel,
-            child: CustomImageView(
-              imagePath: ImageConstant.imgSidebarButton,
-              width: 28.h,
-              height: 24.h,
-            ),
-          ),
-          SizedBox(width: 10.h),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(top: 4.h),
-              child: Text(
-                _currentRoom.title,
-                style: TextStyleHelper.instance.title20ExtraBoldNanumSquareAc,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: () {},
-            child: Container(
-              width: 40.h,
-              height: 40.h,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFF5252).withAlpha(38),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Center(
-                child: CustomImageView(
-                  imagePath: ImageConstant.imgPersonOutline,
-                  height: 24.h,
-                  width: 24.h,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildMessageBubble(ChatMessage message) {
     // 첫 청크가 도착하기 전엔 자리표시자 AI 버블을 그리지 않는다.
@@ -686,14 +640,14 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
               height: 32.h,
               margin: EdgeInsets.only(right: 8.h),
               decoration: BoxDecoration(
-                color: appTheme.red_A200,
+                color: appTheme.basis,
                 shape: BoxShape.circle,
               ),
               child: Center(
                 child: Text(
                   'AI',
                   style: TextStyle(
-                    color: appTheme.white_A700,
+                    color: appTheme.background,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),
@@ -730,7 +684,7 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
                       horizontal: 14.h,
                     ),
                     decoration: BoxDecoration(
-                      color: message.isMe ? appTheme.red_100 : appTheme.red_50,
+                      color: message.isMe ? appTheme.lightbasis : appTheme.verylight,
                       borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(message.isMe ? 20.0 : 4.0),
                         topRight: const Radius.circular(20.0),
@@ -740,7 +694,7 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: appTheme.red_A200.withAlpha(51),
+                          color: appTheme.basis.withAlpha(51),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
@@ -780,20 +734,20 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
           return Container(
             padding: EdgeInsets.symmetric(horizontal: 12.h, vertical: 6.h),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: appTheme.background,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: appTheme.red_A200, width: 1),
+              border: Border.all(color: appTheme.basis, width: 1),
             ),
             child: Row(
               children: [
-                Icon(Icons.restaurant_menu, size: 14, color: appTheme.red_A200),
+                Icon(Icons.restaurant_menu, size: 14, color: appTheme.basis),
                 SizedBox(width: 4.h),
                 Text(
                   r.title,
                   style: TextStyleHelper.instance.body15MediumNotoSansKR
                       .copyWith(
                     fontSize: 11.fSize,
-                    color: appTheme.red_A200,
+                    color: appTheme.basis,
                   ),
                 ),
               ],
@@ -829,10 +783,10 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
         padding: EdgeInsets.symmetric(horizontal: 12.h, vertical: 10.h),
         child: Container(
           decoration: BoxDecoration(
-            color: appTheme.white_A700,
+            color: appTheme.background,
             borderRadius: BorderRadius.circular(30.h),
             border: Border.all(
-              color: _isLoading ? appTheme.red_200_7f : appTheme.red_500,
+              color: _isLoading ? appTheme.cloudy.withAlpha(127) : appTheme.mainUI,
               width: 1.0,
             ),
           ),
@@ -863,13 +817,13 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
                   keyboardType: TextInputType.multiline,
                   enabled: !_isLoading,
                   style: TextStyleHelper.instance.body15NanumSquareAc.copyWith(
-                    color: appTheme.black_900,
+                    color: appTheme.text,
                     fontSize: 12.fSize,
                   ),
                   decoration: InputDecoration(
                     hintText: '냉고에게 물어보세요',
                     hintStyle: TextStyleHelper.instance.body15RegularNanumSquareAc
-                        .copyWith(color: appTheme.red_200_7f, fontSize: 12.fSize),
+                        .copyWith(color: appTheme.cloudy.withAlpha(127), fontSize: 12.fSize),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(vertical: 10.h),
                   ),
