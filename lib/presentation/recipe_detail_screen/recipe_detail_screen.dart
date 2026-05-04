@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import '../../core/app_export.dart';
 import '../../data/mock_data_service.dart';
@@ -123,6 +125,16 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     );
   }
 
+  /// data URL(Mock) 또는 네트워크 URL(API) 모두 처리.
+  /// API 연결 후 data URL이 오지 않으면 Image.network 분기만 실행됨.
+  Widget _buildRecipeImage(String imageUrl) {
+    if (imageUrl.startsWith('data:')) {
+      final bytes = base64Decode(imageUrl.split(',').last);
+      return Image.memory(bytes, fit: BoxFit.cover);
+    }
+    return Image.network(imageUrl, fit: BoxFit.cover);
+  }
+
   Widget _buildRecipeCard() {
     return ClipRRect(
       borderRadius: BorderRadius.circular(14.h),
@@ -133,20 +145,16 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           fit: StackFit.expand,
           children: [
             widget.recipe.imageUrl != null
-                ? Image.network(widget.recipe.imageUrl!, fit: BoxFit.cover)
+                ? _buildRecipeImage(widget.recipe.imageUrl!)
                 : Container(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [appTheme.lightbasis, appTheme.lightbasis],
-                      ),
+                      color: appTheme.lightbasis,
                     ),
                     child: Center(
                       child: Icon(
                         Icons.restaurant_rounded,
                         size: 56.h,
-                        color: Colors.white.withOpacity(0.6),
+                        color: appTheme.background,
                       ),
                     ),
                   ),
@@ -155,7 +163,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
               left: 0,
               right: 0,
               child: Container(
-                color: Colors.white.withOpacity(0.70),
+                color: appTheme.background,
                 padding: EdgeInsets.symmetric(
                   horizontal: 14.h,
                   vertical: 10.h,

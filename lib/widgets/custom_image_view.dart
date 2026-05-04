@@ -27,7 +27,7 @@ enum ImageType { svg, png, network, networkSvg, file, unknown }
 
 class CustomImageView extends StatelessWidget {
   CustomImageView({
-    this.imagePath,
+    String? imagePath,
     this.height,
     this.width,
     this.color,
@@ -38,14 +38,12 @@ class CustomImageView extends StatelessWidget {
     this.margin,
     this.border,
     this.placeHolder,
-  }) {
-    if (imagePath == null || imagePath!.isEmpty) {
-      imagePath = ImageConstant.imgImageNotFound;
-    }
-  }
+  }) : imagePath = (imagePath == null || imagePath.isEmpty)
+            ? ImageConstant.imgImageNotFound
+            : imagePath;
 
   ///[imagePath] is required parameter for showing image
-  late String? imagePath;
+  final String imagePath;
 
   final double? height;
 
@@ -106,13 +104,13 @@ class CustomImageView extends StatelessWidget {
   }
 
   Widget _buildImageView() {
-    switch (imagePath!.imageType) {
+    switch (imagePath.imageType) {
       case ImageType.svg:
         return SizedBox(
           height: height,
           width: width,
           child: SvgPicture.asset(
-            imagePath!,
+            imagePath,
             height: height,
             width: width,
             fit: fit ?? BoxFit.contain,
@@ -126,7 +124,7 @@ class CustomImageView extends StatelessWidget {
         );
       case ImageType.file:
         return Image.file(
-          File(imagePath!),
+          File(imagePath),
           height: height,
           width: width,
           fit: fit ?? BoxFit.cover,
@@ -134,7 +132,7 @@ class CustomImageView extends StatelessWidget {
         );
       case ImageType.networkSvg:
         return SvgPicture.network(
-          imagePath!,
+          imagePath,
           height: height,
           width: width,
           fit: fit ?? BoxFit.contain,
@@ -150,7 +148,7 @@ class CustomImageView extends StatelessWidget {
           height: height,
           width: width,
           fit: fit,
-          imageUrl: imagePath!,
+          imageUrl: imagePath,
           color: color,
           placeholder: (context, url) => SizedBox(
             height: 30,
@@ -170,7 +168,7 @@ class CustomImageView extends StatelessWidget {
       case ImageType.png:
       default:
         return Image.asset(
-          imagePath!,
+          imagePath,
           height: height,
           width: width,
           fit: fit ?? BoxFit.cover,

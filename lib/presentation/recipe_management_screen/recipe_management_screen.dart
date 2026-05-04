@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
@@ -119,7 +118,10 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
               iconPath: ImageConstant.imgPencilSharp,
               title: '레시피 작성하기',
               isActive: false,
-              onTap: () {},
+              onTap: () {
+                widget.onClose?.call();
+                Navigator.pushNamed(context, AppRoutes.recipeWriteScreen);
+              },
             ),
             SizedBox(height: 8.h),
             _buildChatHeader(),

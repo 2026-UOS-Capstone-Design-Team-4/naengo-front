@@ -14,6 +14,10 @@ class MockDataService {
   static final ValueNotifier<int> likesNotifier = ValueNotifier(0);
   static void notifyLikesChanged() => likesNotifier.value++;
 
+  // 레시피 목록 변경 알림 — 추가/삭제 시 게시판 즉시 반영
+  static final ValueNotifier<int> recipesNotifier = ValueNotifier(0);
+  static void notifyRecipesChanged() => recipesNotifier.value++;
+
   // ──────────────────────────────────────────────
   // 현재 로그인된 사용자 (Users 테이블)
   // ──────────────────────────────────────────────
@@ -451,5 +455,24 @@ class MockDataService {
     final sorted = List<RecipeItem>.from(recipes)
       ..sort((a, b) => b.likesCount.compareTo(a.likesCount));
     return sorted.take(count).toList();
+  }
+
+  /// 레시피 추가 (최신 순으로 맨 앞에 삽입)
+  static void addRecipe(RecipeItem recipe) {
+    recipes.insert(0, recipe);
+    notifyRecipesChanged();
+  }
+
+  /// 레시피 삭제
+  static void deleteRecipe(int recipeId) {
+    recipes.removeWhere((r) => r.recipeId == recipeId);
+    notifyRecipesChanged();
+  }
+
+  /// 현재 로그인 유저가 작성한 레시피 목록 (최신 순)
+  static List<RecipeItem> getMyRecipes() {
+    return recipes
+        .where((r) => r.authorId == currentUser.userId)
+        .toList();
   }
 }

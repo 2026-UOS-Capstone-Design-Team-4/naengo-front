@@ -5,6 +5,7 @@ import '../presentation/chat_interface_screen/chat_interface_screen.dart';
 import '../presentation/recipe_management_screen/recipe_management_screen.dart';
 import '../presentation/recipe_board_screen/recipe_board_screen.dart';
 import '../presentation/profile_settings_screen/profile_settings_screen.dart';
+import '../presentation/recipe_write_screen/recipe_write_screen.dart';
 
 class AppRoutes {
   static const String mainShell = '/';
@@ -13,6 +14,7 @@ class AppRoutes {
   static const String recipeManagementScreen = '/recipe_management_screen';
   static const String recipeBoardScreen = '/recipe_board_screen';
   static const String profileSettingsScreen = '/profile_settings_screen';
+  static const String recipeWriteScreen = '/recipe_write_screen';
   static const String initialRoute = '/';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -36,6 +38,9 @@ class AppRoutes {
       case profileSettingsScreen:
         page = const ProfileSettingsScreen();
         break;
+      case recipeWriteScreen:
+        page = const RecipeWriteScreen();
+        break;
       default:
         page = const MainShell();
     }
@@ -58,8 +63,9 @@ class AppRoutes {
       );
     }
 
-    // ProfileSettings: 오른쪽에서 슬라이드
-    if (settings.name == profileSettingsScreen) {
+    // RecipeWrite / ProfileSettings: 오른쪽에서 슬라이드
+    if (settings.name == recipeWriteScreen ||
+        settings.name == profileSettingsScreen) {
       return PageRouteBuilder(
         settings: settings,
         pageBuilder: (context, animation, secondaryAnimation) => page,

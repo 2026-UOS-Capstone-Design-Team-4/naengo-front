@@ -44,7 +44,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     _nicknameController.text = _auth.currentUser.nickname;
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.3),
+      barrierColor: Colors.black.withValues(alpha: 0.3),
       builder: (context) => _ProfileEditDialog(
         nicknameController: _nicknameController,
         profileImageUrl: _auth.currentUser.profileImageUrl,
@@ -173,7 +173,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         children: [
           CircleAvatar(
             radius: 24.h,
-            backgroundColor: Colors.white.withOpacity(0.3),
+            backgroundColor: Colors.white.withValues(alpha: 0.3),
             backgroundImage: imageUrl != null ? NetworkImage(imageUrl) : null,
             child: imageUrl == null
                 ? Icon(Icons.person, color: Colors.white, size: 28.h)
@@ -194,7 +194,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               padding: EdgeInsets.all(4.h),
               child: Icon(
                 Icons.edit,
-                color: Colors.white.withOpacity(0.85),
+                color: Colors.white.withValues(alpha: 0.85),
                 size: 20.h,
               ),
             ),
@@ -214,7 +214,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         borderRadius: BorderRadius.circular(16.h),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -324,7 +324,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         borderRadius: BorderRadius.circular(16.h),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

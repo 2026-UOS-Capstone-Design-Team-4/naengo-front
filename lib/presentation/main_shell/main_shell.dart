@@ -153,7 +153,7 @@ class _MainShellState extends State<MainShell>
                 builder: (context, _) => GestureDetector(
                   onTap: _closePanel,
                   child: Container(
-                    color: Colors.black.withOpacity(_overlayFade.value),
+                    color: Colors.black.withValues(alpha: _overlayFade.value),
                   ),
                 ),
               ),

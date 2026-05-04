@@ -19,11 +19,22 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
   bool _isSortDropdownOpen = false;
   SortType _currentSort = SortType.latest;
 
-  // MockDataService에서 가져온 레시피 목록
-  final List<RecipeItem> _recipes = MockDataService.recipes;
+  @override
+  void initState() {
+    super.initState();
+    MockDataService.recipesNotifier.addListener(_onRecipesChanged);
+  }
+
+  @override
+  void dispose() {
+    MockDataService.recipesNotifier.removeListener(_onRecipesChanged);
+    super.dispose();
+  }
+
+  void _onRecipesChanged() => setState(() {});
 
   List<RecipeItem> get _sortedRecipes {
-    final list = List<RecipeItem>.from(_recipes);
+    final list = List<RecipeItem>.from(MockDataService.recipes);
     switch (_currentSort) {
       case SortType.latest:
         list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -236,7 +247,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
         borderRadius: BorderRadius.circular(12.h),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.07),
+            color: Colors.black.withValues(alpha: 0.07),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -261,7 +272,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
                     child: Icon(
                       Icons.restaurant_rounded,
                       size: 32.h,
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                     ),
                   ),
           ),

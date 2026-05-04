@@ -70,7 +70,7 @@ class _RecipeCardWidgetState extends State<RecipeCardWidget> {
                           child: Icon(
                             Icons.restaurant_rounded,
                             size: 32.h,
-                            color: appTheme.mainUI.withOpacity(0.5),
+                            color: appTheme.mainUI.withValues(alpha: 0.5),
                           ),
                         ),
                       ),
