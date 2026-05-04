@@ -7,7 +7,7 @@ class RecipeItem {
   final List<String> cookingSteps; // instructions JSONB (parsed)
   final String? imageUrl; // image_url VARCHAR(512)
   final String? videoUrl; // video_url VARCHAR(512)
-  final String source; // 'STANDARD' | 'USER'
+  final String source; // 'ADMIN' | 'USER'
   final int? authorId; // author_id → Users.user_id
   final String status; // 'APPROVED' | 'PENDING' | 'REJECTED'
   final DateTime createdAt; // created_at
@@ -29,7 +29,7 @@ class RecipeItem {
     this.cookingSteps = const [],
     this.imageUrl,
     this.videoUrl,
-    this.source = 'STANDARD',
+    this.source = 'ADMIN',
     this.authorId,
     this.status = 'APPROVED',
     required this.createdAt,
