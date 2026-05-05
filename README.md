@@ -211,7 +211,8 @@ flutter build web --release          # Web
 
 | 시점 | 변경 | 파일 |
 |---|---|---|
-| 최근 | **백엔드 동기화** — 사이드 패널 = `GET /chat/rooms` 로 목록 fetch (refresh 버튼 + 로딩 인디케이터), 채팅방 진입 = `GET /chat/rooms/{id}` 로 메시지 내역 복원 | `naengo_api_service.dart`, `recipe_management_screen.dart`, `chat_interface_screen.dart`, `mock_data_service.dart` |
+| 최근 | **채팅방 진짜 삭제** — 백엔드에 `DELETE /chat/rooms/{id}` 추가됨 → 호출 후 로컬 캐시 제거. 실패 시 롤백 + SnackBar. 임시 우회용 `hiddenServerRoomIds` 제거 | `naengo_api_service.dart`, `recipe_management_screen.dart`, `mock_data_service.dart` |
+| 최근 | **백엔드 동기화** — 사이드 패널 = `GET /chat/rooms` 로 목록 fetch (자동 + 로딩 인디케이터), 채팅방 진입 = `GET /chat/rooms/{id}` 로 메시지 내역 복원 | `naengo_api_service.dart`, `recipe_management_screen.dart`, `chat_interface_screen.dart`, `mock_data_service.dart` |
 | 최근 | **API 갈아끼우기** — MindLogic FactChat → Naengo 백엔드, SSE 스트리밍, 멀티모달 (image base64), 레시피 칩 | `naengo_api_service.dart`, `chat_interface_screen.dart`, `recipe.dart` |
 | 최근 | **빈 placeholder 제거** — 첫 청크 도착 전엔 "답변 생성 중…" 만 보이도록 | `chat_interface_screen.dart` |
 | 최근 | **카메라 흐름 정리** — 홈/채팅 양쪽 카메라 버튼 → 미리보기 다이얼로그(브랜드 톤) → 백엔드로 이미지 전송 | `recipe_recommendation_screen.dart`, `chat_interface_screen.dart`, `camera_service.dart` |
@@ -246,4 +247,3 @@ flutter build web --release          # Web
 - **HTTPS 전환** — 평문 HTTP cleartext 예외 제거
 - **에러 UX** — 타임아웃 / 재시도 / 오프라인 표시
 - **이미지 메시지 영속화** — 현재 백엔드는 텍스트 `content` 만 저장 → 과거에 보낸 사진은 history 복원 시 사라짐. 백엔드에 image_url 컬럼 추가 후 매핑 가능
-- **채팅방 삭제 영속화** — 백엔드에 DELETE 엔드포인트가 없어서, 로컬에서 삭제하면 `hiddenServerRoomIds` 세트로 숨김 처리. 앱을 재시작하면 다시 보임 (메모리 only). 추후 `SharedPreferences` 영속화 또는 백엔드 DELETE 엔드포인트 추가 필요

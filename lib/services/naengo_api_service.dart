@@ -10,6 +10,33 @@ import '../models/chat_room.dart';
 import '../models/recipe.dart';
 import '../models/user.dart';
 
+/// SSE 응답을 파싱한 이벤트 타입.
+sealed class ChatEvent {}
+
+/// 첫 응답에서 방 ID가 결정됨.
+class RoomCreated extends ChatEvent {
+  final int roomId;
+  RoomCreated(this.roomId);
+}
+
+/// AI 응답 텍스트 조각.
+class MessageChunk extends ChatEvent {
+  final String content;
+  MessageChunk(this.content);
+}
+
+/// AI 응답 완료 후 추천된 레시피 목록.
+class RecipesReceived extends ChatEvent {
+  final List<Recipe> recipes;
+  RecipesReceived(this.recipes);
+}
+
+/// 스트리밍 중 발생한 오류.
+class ChatStreamError extends ChatEvent {
+  final String message;
+  ChatStreamError(this.message);
+}
+
 /// Naengo (냉고) 백엔드 채팅 API 클라이언트.
 ///
 /// 베이스 URL 은 dart-define 으로 주입 가능:
@@ -109,6 +136,22 @@ class NaengoApi {
     return list
         .map((j) => _messageFromJson(j as Map<String, dynamic>))
         .toList(growable: false);
+  }
+
+  /// 채팅방 삭제 (`DELETE /api/v1/chat/rooms/{room_id}`).
+  /// 백엔드는 실제 삭제 대신 `is_active = false` 로 숨김 처리.
+  /// 이후 `listRooms()` 응답에서 자동 제외됨.
+  ///
+  /// 이미 삭제된 방에 호출하면 404. 호출 측에서 그 경우도 "이미 삭제된 거니 OK" 로
+  /// 처리할 수 있게, 404 도 성공으로 swallow.
+  static Future<void> deleteRoom(int roomId) async {
+    final uri = Uri.parse('$baseUrl/api/v1/chat/rooms/$roomId');
+    final r = await http.delete(uri);
+    if (r.statusCode == 200 || r.statusCode == 404) return;
+    throw HttpException(
+      'deleteRoom ${r.statusCode}: ${r.body}',
+      uri: uri,
+    );
   }
 
   /// `ChatRoomResponse` → 로컬 `ChatRoom` 변환.
@@ -250,10 +293,12 @@ class NaengoApi {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'user_input': inputs}),
     );
-    debugPrint('[NaengoApi] patchProfileInput ${r.statusCode}: ${r.body}');
+
     if (r.statusCode != 200) {
-      throw HttpException('patchProfileInput ${r.statusCode}: ${r.body}', uri: uri);
+      throw HttpException('patchProfileInput ${r.statusCode}: ${r.body}',
+          uri: uri);
     }
+
     final json = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
     return (json['user_input'] as List<dynamic>?)
             ?.map((e) => e as String)
@@ -261,10 +306,7 @@ class NaengoApi {
         [];
   }
 
-  // ───────────────────────── 내부 구현 ─────────────────────────
-
-  /// 공통 SSE 호출 + 파싱 로직.
-  /// http.Client.send 로 streamed response 를 받아 라인 단위로 파싱.
+  /// SSE 스트리밍 내부 구현.
   static Stream<ChatEvent> _streamChat(
     Uri uri, {
     required String prompt,
@@ -272,134 +314,60 @@ class NaengoApi {
   }) async* {
     final client = http.Client();
     try {
-      final body = <String, dynamic>{'prompt': prompt};
-      if (imageDataUrl != null) body['image'] = imageDataUrl;
-
-      final request = http.Request('POST', uri)
-        ..headers['Content-Type'] = 'application/json'
-        ..headers['Accept'] = 'text/event-stream'
-        ..body = jsonEncode(body);
+      final request = http.Request('POST', uri);
+      request.headers['Content-Type'] = 'application/json';
+      request.body = jsonEncode({
+        'prompt': prompt,
+        if (imageDataUrl != null) 'image': imageDataUrl,
+      });
 
       final response = await client.send(request);
+
       if (response.statusCode != 200) {
-        final errBody = await response.stream.bytesToString();
-        throw HttpException(
-          'Naengo API ${response.statusCode}: $errBody',
-          uri: uri,
-        );
+        yield ChatStreamError('Server error: ${response.statusCode}');
+        return;
       }
 
-      // SSE 메시지 단위 — 빈 줄로 구분되는 이벤트 블록을 모은다.
-      // 한 블록 안에는 'event: foo' / 'data: ...' 이 있을 수 있음.
-      String? currentEvent;
-      final dataBuffer = StringBuffer();
-
-      // bytes → utf8 → 라인 단위로 변환.
-      final lines = response.stream
+      await for (final line in response.stream
           .transform(utf8.decoder)
-          .transform(const LineSplitter());
+          .transform(const LineSplitter())) {
+        if (line.isEmpty) continue;
 
-      await for (final line in lines) {
-        if (line.isEmpty) {
-          // 빈 줄 → 한 이벤트 블록 종료. 파싱하고 yield.
-          final raw = dataBuffer.toString();
-          if (currentEvent != null && raw.isNotEmpty) {
-            final parsed = _parseEvent(currentEvent, raw);
-            if (parsed != null) yield parsed;
+        if (line.startsWith('event: ')) {
+          // 다음 라인이 data: ... 인 형태 (표준 SSE) 혹은 
+          // 현재 라인 자체가 특정 이벤트를 의미할 수 있으나 
+          // 여기서는 'event: ' 와 'data: ' 쌍을 처리하기 위해 상태를 가질 수도 있음.
+          // 백엔드 구현에 맞게 간단히 파싱.
+          continue; 
+        }
+
+        if (line.startsWith('data: ')) {
+          final data = line.substring(6);
+          if (data == '[DONE]') break;
+
+          try {
+            final json = jsonDecode(data);
+            if (json is Map<String, dynamic>) {
+              if (json.containsKey('room_id')) {
+                yield RoomCreated(json['room_id'] as int);
+              } else if (json.containsKey('content')) {
+                yield MessageChunk(json['content'] as String);
+              }
+            } else if (json is List) {
+              final recipes = json
+                  .map((r) => Recipe.fromJson((r as Map).cast<String, dynamic>()))
+                  .toList();
+              yield RecipesReceived(recipes);
+            }
+          } catch (e) {
+            debugPrint('SSE JSON parse error: $e\nData: $data');
           }
-          currentEvent = null;
-          dataBuffer.clear();
-          continue;
         }
-
-        if (line.startsWith('event:')) {
-          currentEvent = line.substring(6).trim();
-        } else if (line.startsWith('data:')) {
-          // 한 이벤트가 여러 data: 줄에 걸칠 수 있음 (SSE 표준)
-          if (dataBuffer.isNotEmpty) dataBuffer.writeln();
-          dataBuffer.write(line.substring(5).trim());
-        }
-        // ":" 로 시작하는 코멘트 라인 / 기타 헤더는 무시
       }
-
-      // 스트림 종료 직전에 남은 이벤트 처리
-      final tail = dataBuffer.toString();
-      if (currentEvent != null && tail.isNotEmpty) {
-        final parsed = _parseEvent(currentEvent, tail);
-        if (parsed != null) yield parsed;
-      }
-    } catch (e, st) {
-      debugPrint('[NaengoApi] stream 오류: $e\n$st');
-      yield ChatStreamError(message: e.toString());
+    } catch (e) {
+      yield ChatStreamError(e.toString());
     } finally {
       client.close();
     }
   }
-
-  /// 이벤트 이름 + raw data 문자열 → ChatEvent.
-  static ChatEvent? _parseEvent(String event, String dataRaw) {
-    try {
-      final dynamic data = jsonDecode(dataRaw);
-      switch (event) {
-        case 'room':
-          // {"room_id": 42}
-          if (data is Map && data['room_id'] is int) {
-            return RoomCreated(roomId: data['room_id'] as int);
-          }
-          return null;
-        case 'message':
-          // {"content": "..."}
-          if (data is Map && data['content'] is String) {
-            return MessageChunk(content: data['content'] as String);
-          }
-          return null;
-        case 'recipes':
-          // [RecipeResponse, ...]
-          if (data is List) {
-            final list = data
-                .whereType<Map>()
-                .map((e) => Recipe.fromJson(e.cast<String, dynamic>()))
-                .toList(growable: false);
-            return RecipesReceived(recipes: list);
-          }
-          return null;
-        default:
-          return null;
-      }
-    } catch (e) {
-      debugPrint('[NaengoApi] 이벤트 파싱 실패 ($event): $e\nraw=$dataRaw');
-      return null;
-    }
-  }
-}
-
-// ───────────────────────── 이벤트 모델 ─────────────────────────
-
-/// SSE 스트림에서 yield 되는 단일 이벤트.
-sealed class ChatEvent {
-  const ChatEvent();
-}
-
-/// `event: room` — 첫 메시지 시 백엔드가 부여한 정수 room_id.
-class RoomCreated extends ChatEvent {
-  final int roomId;
-  const RoomCreated({required this.roomId});
-}
-
-/// `event: message` — AI 응답의 텍스트 청크. 호출 측에서 누적해 합쳐야 함.
-class MessageChunk extends ChatEvent {
-  final String content;
-  const MessageChunk({required this.content});
-}
-
-/// `event: recipes` — 답변 완료 후 추천된 레시피 목록.
-class RecipesReceived extends ChatEvent {
-  final List<Recipe> recipes;
-  const RecipesReceived({required this.recipes});
-}
-
-/// 네트워크/파싱 오류. UI 측에서 에러 메시지로 처리.
-class ChatStreamError extends ChatEvent {
-  final String message;
-  const ChatStreamError({required this.message});
 }

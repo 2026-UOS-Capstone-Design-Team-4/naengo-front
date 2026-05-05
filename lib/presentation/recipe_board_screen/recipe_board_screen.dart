@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
@@ -597,26 +596,4 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
     );
   }
 
-  Widget _buildStatusBadge(String status) {
-    final (label, color) = switch (status) {
-      'APPROVED' => ('승인됨', appTheme.approved),
-      'REJECTED' => ('반려됨', appTheme.rejected),
-      _ => ('검토중', appTheme.pending),
-    };
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.h, vertical: 3.h),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20.h),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11.fSize,
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
 }

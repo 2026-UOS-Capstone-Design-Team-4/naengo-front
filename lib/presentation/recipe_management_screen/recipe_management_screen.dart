@@ -72,8 +72,33 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
 
   bool _isActive(String route) => widget.activeRoute == route;
 
-  void _deleteRoom(String roomId) {
-    setState(() => MockDataService.removeRoom(roomId));
+  /// 채팅방 삭제.
+  ///   - serverRoomId 있음 → 낙관적 로컬 제거 + 백엔드 `DELETE` 호출.
+  ///                          실패 시 롤백 (다시 목록에 끼워 넣음) + SnackBar 안내.
+  ///   - serverRoomId 없음   → 아직 첫 메시지 안 보낸 로컬 전용 방. 로컬에서만 제거.
+  Future<void> _deleteRoom(ChatRoom room) async {
+    // 낙관적 제거 — 즉시 UI 반영
+    final previousRooms = List<ChatRoom>.from(MockDataService.chatRooms);
+    setState(() => MockDataService.removeRoom(room.roomId));
+
+    if (room.serverRoomId == null) return; // 로컬 전용 방이면 끝
+
+    try {
+      await NaengoApi.deleteRoom(room.serverRoomId!);
+    } catch (e, st) {
+      debugPrint('[Sidebar] deleteRoom 실패: $e\n$st');
+      if (!mounted) return;
+      // 백엔드 삭제 실패 → 로컬 상태 롤백 (사라졌던 방 다시 표시)
+      setState(() {
+        MockDataService.chatRooms = previousRooms;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('채팅방 삭제에 실패했어요. 잠시 후 다시 시도해주세요.'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _openRoom(ChatRoom room) {
@@ -369,7 +394,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
             // 현재 방은 삭제 버튼 숨김
             if (!isCurrent)
               GestureDetector(
-                onTap: () => _deleteRoom(room.roomId),
+                onTap: () => _deleteRoom(room),
                 child: Padding(
                   padding: EdgeInsets.only(left: 8.h),
                   child: CustomImageView(

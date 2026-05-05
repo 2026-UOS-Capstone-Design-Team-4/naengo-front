@@ -91,24 +91,10 @@ class MockDataService {
     }
   }
 
-  /// 사용자가 삭제한 백엔드 방의 server_room_id 를 보관하는 hide set.
-  ///
-  /// 백엔드에 DELETE 엔드포인트가 없어서 mergeServerRooms 가 매번 같은 방을 다시
-  /// 가져옴. 그 사이 사용자가 삭제했다면 표시되면 안 됨 → 이 set 으로 필터링.
-  ///
-  /// ⚠️ 메모리에만 유지 — 앱 재시작 시 비워짐. 추후 SharedPreferences 영속화 필요.
-  static final Set<int> hiddenServerRoomIds = <int>{};
-
   /// 채팅방 삭제 (메시지도 함께 삭제).
-  /// 백엔드 방이면 server_room_id 를 `hiddenServerRoomIds` 에 추가해
-  /// 다음 동기화 후에도 다시 안 나타나도록 함.
+  /// 백엔드 동기화는 호출 측 (Sidebar) 에서 `NaengoApi.deleteRoom` 으로 처리.
   static void removeRoom(String roomId) {
-    final idx = chatRooms.indexWhere((r) => r.roomId == roomId);
-    if (idx != -1) {
-      final sid = chatRooms[idx].serverRoomId;
-      if (sid != null) hiddenServerRoomIds.add(sid);
-      chatRooms.removeAt(idx);
-    }
+    chatRooms.removeWhere((r) => r.roomId == roomId);
     roomMessages.remove(roomId);
   }
 
@@ -117,18 +103,13 @@ class MockDataService {
   /// 정책:
   ///   - 서버에서 받은 방은 source of truth → 그대로 반영
   ///   - 아직 첫 메시지를 안 보낸 로컬 전용 방 (serverRoomId == null) 은 보존
-  ///   - 사용자가 삭제한 방 (`hiddenServerRoomIds`) 은 필터링
   ///
   /// 결과는 `updatedAt` 내림차순 정렬.
   static void mergeServerRooms(List<ChatRoom> serverRooms) {
     final pending = chatRooms
         .where((r) => r.serverRoomId == null)
         .toList(growable: false);
-    final visibleServer = serverRooms.where(
-      (r) => r.serverRoomId == null ||
-          !hiddenServerRoomIds.contains(r.serverRoomId),
-    );
-    chatRooms = [...pending, ...visibleServer]
+    chatRooms = [...pending, ...serverRooms]
       ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
   }
 
@@ -427,40 +408,31 @@ class MockDataService {
         '돼지고기 50g (없어도 됨)',
         '참기름 1큰술',
         '간장 1/2큰술',
-        '고추장 1/2큰술 (선택)',
-        '계란 1개',
-        '통깨 약간',
+        '고추장 1/2큰술',
       ],
       cookingSteps: [
-        '김치를 잘게 자르고 기름 두른 팬에 볶습니다.',
-        '돼지고기를 넣고 같이 볶습니다.',
-        '밥을 넣고 눌러가며 볶습니다.',
-        '간장과 고추장으로 간을 맞춥니다.',
-        '참기름을 두르고 통깨를 뿌립니다.',
-        '반숙 계란 후라이를 올려 완성합니다.',
+        '김치를 잘게 썹니다.',
+        '팬에 식용유를 두르고 돼지고기와 김치를 볶습니다.',
+        '밥을 넣고 양념(간장, 고추장)과 함께 잘 볶아줍니다.',
+        '참기름을 둘러 마무리합니다.',
       ],
-      source: 'USER',
-      authorId: 1,
+      source: 'ADMIN',
       status: 'APPROVED',
       createdAt: DateTime(2025, 4, 1),
       likesCount: 120,
-      scrapCount: 55,
-      isLiked: true,
-      isBookmarked: true,
+      scrapCount: 45,
     ),
   ];
 
-  /// 추천 레시피 n개 반환 (좋아요 순 상위)
-  static List<RecipeItem> getRecommendations({int count = 3}) {
-    final sorted = List<RecipeItem>.from(recipes)
-      ..sort((a, b) => b.likesCount.compareTo(a.likesCount));
-    return sorted.take(count).toList();
-  }
-
-  /// 레시피 추가 (최신 순으로 맨 앞에 삽입)
+  /// 레시피 추가 (목 데이터)
   static void addRecipe(RecipeItem recipe) {
     recipes.insert(0, recipe);
     notifyRecipesChanged();
+  }
+
+  /// 내 레시피 목록 (authorId 매칭)
+  static List<RecipeItem> getMyRecipes() {
+    return recipes.where((r) => r.authorId == currentUser.userId).toList();
   }
 
   /// 레시피 삭제
@@ -469,10 +441,9 @@ class MockDataService {
     notifyRecipesChanged();
   }
 
-  /// 현재 로그인 유저가 작성한 레시피 목록 (최신 순)
-  static List<RecipeItem> getMyRecipes() {
-    return recipes
-        .where((r) => r.authorId == currentUser.userId)
-        .toList();
+  /// 추천 레시피 가져오기 (랜덤하게 count개 선택)
+  static List<RecipeItem> getRecommendations({int count = 3}) {
+    final list = List<RecipeItem>.from(recipes)..shuffle();
+    return list.take(count).toList();
   }
 }
