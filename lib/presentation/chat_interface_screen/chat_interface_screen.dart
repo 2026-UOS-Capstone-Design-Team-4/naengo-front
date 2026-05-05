@@ -8,10 +8,12 @@ import '../../data/mock_data_service.dart';
 import '../../models/chat_message.dart';
 import '../../models/chat_room.dart';
 import '../../models/recipe.dart';
+import '../../models/recipe_item.dart';
 import '../../services/camera_service.dart';
 import '../../services/naengo_api_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_image_view.dart';
+import '../recipe_detail_screen/recipe_detail_screen.dart';
 import '../recipe_management_screen/recipe_management_screen.dart';
 
 class ChatInterfaceScreen extends StatefulWidget {
@@ -254,8 +256,22 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
           setState(() {});
           _scrollToBottom();
         } else if (event is RecipesReceived) {
+          // AI 메시지 버블 아래에 레시피 카드들이 붙음
           aiMessage.recipes = event.recipes;
           setState(() {});
+
+          // 팁이 있으면 카드 다음에 별도 AI 채팅 버블로 추가
+          // (사용자 요청: "팁같은 것은 그 팝업 그다음 채팅 밑에 작성")
+          final tipsText = _formatRecipesTips(event.recipes);
+          if (tipsText.isNotEmpty) {
+            _addMessage(ChatMessage(
+              text: tipsText,
+              isMe: false,
+              sentAt: DateTime.now(),
+              isStreaming: false,
+            ));
+            _scrollToBottom();
+          }
         } else if (event is ChatStreamError) {
           _finishStreamingWithError(aiMessage, event.message);
         }
@@ -700,18 +716,12 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
                         ),
                       ],
                     ),
-                    child: Text(
-                      message.text.isEmpty && message.isStreaming
-                          ? '…'
-                          : message.text,
-                      style: TextStyleHelper.instance.body15MediumNotoSansKR
-                          .copyWith(fontSize: 12.fSize),
-                    ),
+                    child: _buildMessageText(message),
                   ),
-                // AI 응답에 추천 레시피가 첨부됐으면 칩으로 표시
+                // AI 응답에 추천 레시피가 있으면 카드로 표시 (탭하면 상세화면)
                 if (!message.isMe && message.hasRecipes) ...[
                   SizedBox(height: 8.h),
-                  _buildRecipeChips(message.recipes),
+                  _buildRecipeCards(message.recipes),
                 ],
               ],
             ),
@@ -721,41 +731,286 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
     );
   }
 
-  /// AI 메시지에 첨부된 레시피들 — 가로 스크롤 칩.
-  Widget _buildRecipeChips(List<Recipe> recipes) {
-    return SizedBox(
-      height: 36.h,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: recipes.length,
-        separatorBuilder: (_, __) => SizedBox(width: 6.h),
-        itemBuilder: (_, i) {
-          final r = recipes[i];
-          return Container(
-            padding: EdgeInsets.symmetric(horizontal: 12.h, vertical: 6.h),
+  /// AI 메시지 아래에 붙는 레시피 카드 묶음 — 탭하면 상세화면으로 이동.
+  ///
+  /// 한 줄에 한 개씩 세로로 쌓되, 좌우 폭은 채팅 버블과 비슷하게 컴팩트하게 유지.
+  Widget _buildRecipeCards(List<Recipe> recipes) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < recipes.length; i++) ...[
+          if (i > 0) SizedBox(height: 6.h),
+          _buildRecipeCard(recipes[i]),
+        ],
+      ],
+    );
+  }
+
+  /// 클릭 가능한 레시피 카드 한 장. 게시판 카드의 컴팩트 버전.
+  ///
+  /// `GestureDetector` 대신 `Material` + `InkWell` 조합 사용:
+  ///   - ListView 의 스크롤 제스처와 제대로 cooperation → 탭이 누락되는 일 줄어듦
+  ///   - Material 디자인 ripple 피드백 (탭 시 빨강 잔물결)
+  /// 외곽의 그림자는 Material 의 elevation 으로 완전히 대체하면 색감이 바뀌므로,
+  /// shadow 만 별도 Container 로 감싸서 유지.
+  Widget _buildRecipeCard(Recipe r) {
+    return Container(
+      constraints: BoxConstraints(maxWidth: 260.h),
+      decoration: BoxDecoration(
+        // 그림자만 여기서 — 내부 Material 위에 띄움
+        borderRadius: BorderRadius.circular(14.h),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFF5252).withAlpha(28),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.h),
+        clipBehavior: Clip.antiAlias, // 카드 모서리 밖으로 ripple 새지 않게
+        child: InkWell(
+          onTap: () => _navigateToRecipeDetail(r),
+          splashColor: const Color(0xFFFF5252).withAlpha(40),
+          highlightColor: const Color(0xFFFF5252).withAlpha(15),
+          child: Container(
+            padding: EdgeInsets.all(10.h),
             decoration: BoxDecoration(
-              color: appTheme.background,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: appTheme.basis, width: 1),
+              border: Border.all(
+                color: const Color(0xFFFF5252).withAlpha(80),
+                width: 1,
+              ),
+              borderRadius: BorderRadius.circular(14.h),
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(Icons.restaurant_menu, size: 14, color: appTheme.basis),
-                SizedBox(width: 4.h),
-                Text(
-                  r.title,
-                  style: TextStyleHelper.instance.body15MediumNotoSansKR
-                      .copyWith(
-                    fontSize: 11.fSize,
-                    color: appTheme.basis,
+                // 썸네일 — image_url 있으면 이미지, 없으면 기본 아이콘
+                Container(
+                  width: 44.h,
+                  height: 44.h,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFB3B3),
+                    borderRadius: BorderRadius.circular(10.h),
                   ),
+                  child: (r.imageUrl != null && r.imageUrl!.isNotEmpty)
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(10.h),
+                          child: Image.network(
+                            r.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Icon(
+                                Icons.restaurant_rounded,
+                                size: 22.h,
+                                color: Colors.white.withAlpha(220),
+                              ),
+                            ),
+                          ),
+                        )
+                      : Center(
+                          child: Icon(
+                            Icons.restaurant_rounded,
+                            size: 22.h,
+                            color: Colors.white.withAlpha(220),
+                          ),
+                        ),
+                ),
+                SizedBox(width: 10.h),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        r.title,
+                        style: TextStyleHelper.instance.body15BoldNanumSquareAc
+                            .copyWith(
+                          fontSize: 13.fSize,
+                          color: const Color(0xFF1A1A1A),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 2.h),
+                      Text(
+                        r.ingredientsRaw.isNotEmpty
+                            ? r.ingredientsRaw
+                            : '재료 정보 없음',
+                        style: TextStyle(
+                          fontSize: 10.fSize,
+                          color: const Color(0xFF999999),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                // 화살표 — 탭 가능함을 시각적 신호
+                Icon(
+                  Icons.chevron_right,
+                  size: 18.h,
+                  color: const Color(0xFFFF5252).withAlpha(180),
                 ),
               ],
             ),
-          );
-        },
+          ),
+        ),
       ),
     );
+  }
+
+  /// 백엔드 [Recipe] → 기존 상세화면이 받는 [RecipeItem] 으로 변환 후 push.
+  /// 좋아요/스크랩 카운트는 chat 응답에 포함 안 되므로 0 으로 시작 (추후 백엔드 연동).
+  void _navigateToRecipeDetail(Recipe r) {
+    final item = RecipeItem(
+      recipeId: r.id,
+      title: r.title,
+      description: r.description,
+      ingredientsRaw: r.ingredientsRaw,
+      ingredientsList: r.ingredients.map((i) {
+        final note = (i.note ?? '').trim();
+        final base = '${i.name} ${i.amount}${i.unit}'.trim();
+        return note.isEmpty ? base : '$base ($note)';
+      }).toList(),
+      cookingSteps: r.instructions,
+      imageUrl: r.imageUrl,
+      videoUrl: r.videoUrl,
+      source: r.authorType == 'USER' ? 'USER' : 'STANDARD',
+      status: 'APPROVED',
+      createdAt: DateTime.now(),
+      likesCount: 0,
+      scrapCount: 0,
+    );
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (c, a, b) => RecipeDetailScreen(recipe: item),
+        transitionsBuilder: (c, a, b, child) => SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.0, 1.0),
+            end: Offset.zero,
+          ).animate(
+            CurvedAnimation(parent: a, curve: Curves.easeOutCubic),
+          ),
+          child: child,
+        ),
+        transitionDuration: const Duration(milliseconds: 320),
+      ),
+    );
+  }
+
+  /// 메시지 텍스트 위젯. AI 응답에는 간단한 마크다운(`**bold**`, `# heading`) 적용.
+  /// 사용자 메시지엔 그대로 — 입력한 그대로 보여줘야 헷갈림 없음.
+  Widget _buildMessageText(ChatMessage message) {
+    final text = message.text.isEmpty && message.isStreaming
+        ? '…'
+        : message.text;
+    final baseStyle = TextStyleHelper.instance.body15MediumNotoSansKR
+        .copyWith(fontSize: 12.fSize);
+
+    if (message.isMe) {
+      return Text(text, style: baseStyle);
+    }
+    return Text.rich(
+      TextSpan(children: _parseSimpleMarkdown(text, baseStyle)),
+    );
+  }
+
+  /// 채팅 AI 응답용 초경량 마크다운 파서.
+  ///   - 줄 시작 `# `, `## `, `### ` → 헤딩 (각각 +3 / +2 / +1 폰트 크기)
+  ///   - 인라인 `**...**` → 볼드 (FontWeight.w800)
+  /// 그 외(이탤릭, 코드 블록, 링크, 리스트 등)는 그대로 출력 — 채팅 응답에선 거의 안 나옴.
+  ///
+  /// 스트리밍 중에 마크다운이 미완성이면(`**hel` 처럼 닫는 `**` 없음) 그냥 plain 으로 표시.
+  /// 다음 청크에 닫는 `**` 가 도착하면 자동으로 볼드 적용 — 자연스러운 점진적 렌더.
+  List<InlineSpan> _parseSimpleMarkdown(String text, TextStyle baseStyle) {
+    if (text.isEmpty) return [TextSpan(text: text, style: baseStyle)];
+
+    final spans = <InlineSpan>[];
+    final lines = text.split('\n');
+
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final headingMatch = RegExp(r'^(#{1,3})\s+(.*)$').firstMatch(line);
+
+      if (headingMatch != null) {
+        final level = headingMatch.group(1)!.length;
+        final content = headingMatch.group(2)!;
+        // # → +3, ## → +2, ### → +1 (heading level 작을수록 큼)
+        final extra = (4 - level).toDouble();
+        final headingStyle = baseStyle.copyWith(
+          fontSize: (baseStyle.fontSize ?? 12.fSize) + extra,
+          fontWeight: FontWeight.w800,
+          height: 1.5,
+        );
+        spans.addAll(_parseInlineBold(content, headingStyle));
+      } else {
+        spans.addAll(_parseInlineBold(line, baseStyle));
+      }
+
+      if (i < lines.length - 1) {
+        spans.add(const TextSpan(text: '\n'));
+      }
+    }
+
+    return spans;
+  }
+
+  /// `**bold**` 부분만 볼드 처리, 나머지는 base style 그대로.
+  List<InlineSpan> _parseInlineBold(String text, TextStyle baseStyle) {
+    if (text.isEmpty) return const [];
+
+    final spans = <InlineSpan>[];
+    final regex = RegExp(r'\*\*(.+?)\*\*'); // non-greedy
+    var lastEnd = 0;
+
+    for (final match in regex.allMatches(text)) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(
+          text: text.substring(lastEnd, match.start),
+          style: baseStyle,
+        ));
+      }
+      spans.add(TextSpan(
+        text: match.group(1),
+        style: baseStyle.copyWith(fontWeight: FontWeight.w800),
+      ));
+      lastEnd = match.end;
+    }
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastEnd),
+        style: baseStyle,
+      ));
+    }
+    return spans;
+  }
+
+  /// 추천된 레시피들의 [Recipe.tips] 를 한국어 채팅 메시지로 묶어 반환.
+  /// 모든 레시피의 팁이 비어있으면 빈 문자열 → 호출 측이 아무 메시지도 안 추가.
+  ///
+  /// 형식:
+  ///   💡 김치두부찌개 팁
+  ///   • 김치는 잘 익은 걸 쓰면 더 맛있어요.
+  ///   • ...
+  ///
+  ///   💡 다른요리 팁
+  ///   • ...
+  String _formatRecipesTips(List<Recipe> recipes) {
+    final buf = StringBuffer();
+    for (final r in recipes) {
+      if (r.tips.isEmpty) continue;
+      if (buf.isNotEmpty) buf.write('\n\n');
+      buf.write('💡 ${r.title} 팁\n');
+      for (final tip in r.tips) {
+        buf.write('• $tip\n');
+      }
+    }
+    return buf.toString().trimRight();
   }
 
   /// 채팅에서 이미지 탭 시 전체화면으로 펼쳐 보기 (핀치 줌 가능).
@@ -850,4 +1105,3 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
     );
   }
 }
-

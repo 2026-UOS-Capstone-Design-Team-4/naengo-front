@@ -73,10 +73,14 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
   bool _isActive(String route) => widget.activeRoute == route;
 
   /// 채팅방 삭제.
-  ///   - serverRoomId 있음 → 낙관적 로컬 제거 + 백엔드 `DELETE` 호출.
-  ///                          실패 시 롤백 (다시 목록에 끼워 넣음) + SnackBar 안내.
-  ///   - serverRoomId 없음   → 아직 첫 메시지 안 보낸 로컬 전용 방. 로컬에서만 제거.
+  ///   - 먼저 확인 다이얼로그를 띄움 (브랜드 톤)
+  ///   - 확인 시: serverRoomId 있음 → 낙관적 로컬 제거 + 백엔드 `DELETE` 호출.
+  ///             실패 시 롤백 (다시 목록에 끼워 넣음) + SnackBar 안내.
+  ///   - serverRoomId 없음 → 아직 첫 메시지 안 보낸 로컬 전용 방. 로컬에서만 제거.
   Future<void> _deleteRoom(ChatRoom room) async {
+    final confirmed = await _showDeleteConfirmDialog(room);
+    if (!mounted || confirmed != true) return;
+
     // 낙관적 제거 — 즉시 UI 반영
     final previousRooms = List<ChatRoom>.from(MockDataService.chatRooms);
     setState(() => MockDataService.removeRoom(room.roomId));
@@ -99,6 +103,97 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
         ),
       );
     }
+  }
+
+  /// 삭제 확인 다이얼로그. 사진 미리보기 다이얼로그와 동일한 브랜드 톤.
+  Future<bool?> _showDeleteConfirmDialog(ChatRoom room) {
+    const primary = Color(0xFFFF5252);   // 브랜드 빨강 (입력창 테두리, 환영 메시지)
+    const tint = Color(0xFFFFF8F8);      // 살짝 분홍빛 배경 틴트
+    const darkText = Color(0xFF1A1A1A);
+    const subText = Color(0xFF666666);
+
+    return showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (ctx) => Dialog(
+        backgroundColor: tint,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 22, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                '채팅방을 삭제할까요?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: darkText,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '"${room.title}"\n삭제하면 되돌릴 수 없어요.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: subText,
+                  fontSize: 13,
+                  height: 1.4,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: primary,
+                        backgroundColor: Colors.white,
+                        side: const BorderSide(color: primary, width: 1.2),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text(
+                        '취소',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text(
+                        '삭제',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _openRoom(ChatRoom room) {
