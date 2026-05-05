@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import '../models/chat_message.dart';
 import '../models/chat_room.dart';
 import '../models/recipe.dart';
+import '../models/user.dart';
 
 /// Naengo (냉고) 백엔드 채팅 API 클라이언트.
 ///
@@ -138,6 +139,71 @@ class NaengoApi {
           .toList(growable: false),
       isStreaming: false,
     );
+  }
+
+  // ───────────────────────── 유저 API ─────────────────────────
+
+  /// 내 정보 조회 (`GET /api/v1/users/me`).
+  static Future<AppUser> getMe() async {
+    final uri = Uri.parse('$baseUrl/api/v1/users/me');
+    final r = await http.get(uri);
+    if (r.statusCode != 200) {
+      throw HttpException('getMe ${r.statusCode}: ${r.body}', uri: uri);
+    }
+    return AppUser.fromJson(
+      jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
+  /// 닉네임 수정 (`PATCH /api/v1/users/me`).
+  static Future<AppUser> patchNickname(String nickname) async {
+    final uri = Uri.parse('$baseUrl/api/v1/users/me');
+    final r = await http.patch(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'nickname': nickname}),
+    );
+    if (r.statusCode != 200) {
+      throw HttpException('patchNickname ${r.statusCode}: ${r.body}', uri: uri);
+    }
+    return AppUser.fromJson(
+      jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
+  /// 내 프로필 조회 — user_input 배열만 반환 (`GET /api/v1/users/me/profile`).
+  /// 프로필이 아직 없으면(404) 빈 배열 반환.
+  static Future<List<String>> getProfileInput() async {
+    final uri = Uri.parse('$baseUrl/api/v1/users/me/profile');
+    final r = await http.get(uri);
+    if (r.statusCode == 404) return [];
+    if (r.statusCode != 200) {
+      throw HttpException('getProfileInput ${r.statusCode}: ${r.body}', uri: uri);
+    }
+    final json = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+    return (json['user_input'] as List<dynamic>?)
+            ?.map((e) => e as String)
+            .toList() ??
+        [];
+  }
+
+  /// 취향/알레르기 수정 (`PATCH /api/v1/users/me/profile`).
+  static Future<List<String>> patchProfileInput(List<String> inputs) async {
+    final uri = Uri.parse('$baseUrl/api/v1/users/me/profile');
+    final r = await http.patch(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'user_input': inputs}),
+    );
+    debugPrint('[NaengoApi] patchProfileInput ${r.statusCode}: ${r.body}');
+    if (r.statusCode != 200) {
+      throw HttpException('patchProfileInput ${r.statusCode}: ${r.body}', uri: uri);
+    }
+    final json = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+    return (json['user_input'] as List<dynamic>?)
+            ?.map((e) => e as String)
+            .toList() ??
+        [];
   }
 
   // ───────────────────────── 내부 구현 ─────────────────────────

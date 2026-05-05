@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
@@ -22,13 +23,24 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   late final TextEditingController _userInputController;
   bool _isSavingPreference = false;
 
+  bool _isLoading = true;
+
   @override
   void initState() {
     super.initState();
-    _nicknameController =
-        TextEditingController(text: _auth.currentUser.nickname);
-    _userInputController =
-        TextEditingController(text: _auth.currentProfile.userInput.join('\n'));
+    _nicknameController = TextEditingController();
+    _userInputController = TextEditingController();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      await _auth.load();
+    } catch (_) {}
+    if (!mounted) return;
+    _nicknameController.text = _auth.currentUser.nickname;
+    _userInputController.text = _auth.currentProfile.userInput.join('\n');
+    setState(() => _isLoading = false);
   }
 
   @override
@@ -79,15 +91,24 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
         .toList();
-    await _auth.updateUserInput(lines);
-    if (!mounted) return;
-    setState(() {
-      _isEditingPreference = false;
-      _isSavingPreference = false;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('취향이 저장되었어요.')),
-    );
+    try {
+      await _auth.updateUserInput(lines);
+      if (!mounted) return;
+      setState(() {
+        _isEditingPreference = false;
+        _isSavingPreference = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('취향이 저장되었어요.')),
+      );
+    } catch (e) {
+      debugPrint('[ProfileSettings] 취향 저장 실패: $e');
+      if (!mounted) return;
+      setState(() => _isSavingPreference = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('저장에 실패했어요. 다시 시도해주세요.')),
+      );
+    }
   }
 
   // ── 로그아웃 / 탈퇴 ─────────────────────────────────────
@@ -138,20 +159,35 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     final user = _auth.currentUser;
 
     return Scaffold(
-      backgroundColor: appTheme.maximumlight,
-      appBar: NaengoAppBar(
-        showBackArrow: true,
-        title: '개인정보 설정',
-      ),
-      body: ListView(
-        padding: EdgeInsets.symmetric(horizontal: 16.h, vertical: 8.h),
-        children: [
-          _buildProfileCard(user.nickname, user.profileImageUrl),
-          SizedBox(height: 20.h),
-          _buildPreferenceSection(),
-          SizedBox(height: 20.h),
-          _buildActionSection(),
-        ],
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: BoxDecoration(color: appTheme.maximumlight),
+        child: SafeArea(
+          child: Column(
+            children: [
+              NaengoAppBar(
+                showBackArrow: true,
+                title: '개인정보 설정',
+              ),
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 16.h, vertical: 8.h),
+                        children: [
+                          _buildProfileCard(
+                              user.nickname, user.profileImageUrl),
+                          SizedBox(height: 20.h),
+                          _buildPreferenceSection(),
+                          SizedBox(height: 20.h),
+                          _buildActionSection(),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -383,8 +419,16 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
   Future<void> _onSave() async {
     if (widget.nicknameController.text.trim().isEmpty) return;
     setState(() => _isSaving = true);
-    await widget.onSave();
-    if (mounted) Navigator.pop(context);
+    try {
+      await widget.onSave();
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('저장에 실패했어요. 다시 시도해주세요.')),
+      );
+    }
   }
 
   @override

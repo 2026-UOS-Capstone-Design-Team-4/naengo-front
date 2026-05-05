@@ -171,51 +171,57 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: appTheme.maximumlight,
-      appBar: NaengoAppBar(
-        showBackArrow: true,
-        title: '작성하기',
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding:
-                  EdgeInsets.symmetric(horizontal: 16.h, vertical: 20.h),
-              children: [
-                _buildImagePicker(),
-                SizedBox(height: 24.h),
-                _buildTitleField(),
-                SizedBox(height: 20.h),
-                _buildSection(
-                  label: '간단한 소개',
-                  controller: _descriptionController,
-                  hint: '간단한 설명',
-                  minLines: 3,
-                  maxLines: 5,
+      backgroundColor: Colors.transparent,
+      resizeToAvoidBottomInset: true,
+      body: Container(
+        decoration: BoxDecoration(color: appTheme.maximumlight),
+        child: SafeArea(
+          child: Column(
+            children: [
+              NaengoAppBar(
+                showBackArrow: true,
+                title: '작성하기',
+              ),
+              Expanded(
+                child: ListView(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 16.h, vertical: 20.h),
+                  children: [
+                    _buildImagePicker(),
+                    SizedBox(height: 24.h),
+                    _buildTitleField(),
+                    SizedBox(height: 20.h),
+                    _buildSection(
+                      label: '간단한 소개',
+                      controller: _descriptionController,
+                      hint: '간단한 설명',
+                      minLines: 3,
+                      maxLines: 5,
+                    ),
+                    SizedBox(height: 20.h),
+                    _buildSection(
+                      label: '필요한 재료',
+                      controller: _ingredientsController,
+                      hint: '재료 작성',
+                      minLines: 3,
+                      maxLines: 8,
+                    ),
+                    SizedBox(height: 20.h),
+                    _buildSection(
+                      label: '조리법',
+                      controller: _contentController,
+                      hint: '조리방법 작성',
+                      minLines: 4,
+                      maxLines: 12,
+                    ),
+                    SizedBox(height: 24.h),
+                  ],
                 ),
-                SizedBox(height: 20.h),
-                _buildSection(
-                  label: '필요한 재료',
-                  controller: _ingredientsController,
-                  hint: '재료 작성',
-                  minLines: 3,
-                  maxLines: 8,
-                ),
-                SizedBox(height: 20.h),
-                _buildSection(
-                  label: '조리법',
-                  controller: _contentController,
-                  hint: '조리방법 작성',
-                  minLines: 4,
-                  maxLines: 12,
-                ),
-                SizedBox(height: 24.h),
-              ],
-            ),
+              ),
+              _buildBottomButtons(),
+            ],
           ),
-          _buildBottomButtons(),
-        ],
+        ),
       ),
     );
   }
