@@ -40,7 +40,10 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
     super.dispose();
   }
 
-  void _onRecipesChanged() => setState(() {});
+  void _onRecipesChanged() {
+    setState(() {});
+    if (_tab == _Tab.mine) _loadMyRecipes();
+  }
 
   void _switchTab(_Tab tab) {
     setState(() => _tab = tab);
@@ -509,6 +512,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
     if (confirmed != true || !mounted) return;
     try {
       await NaengoApi.deletePendingRecipe(recipe.recipeId);
+      MockDataService.deleteRecipe(recipe.recipeId);
       setState(() => _myRecipes.removeWhere((r) => r.recipeId == recipe.recipeId));
     } catch (_) {
       if (!mounted) return;
