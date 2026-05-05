@@ -162,7 +162,7 @@ class MockDataService {
   // ──────────────────────────────────────────────
   static final List<RecipeItem> recipes = [
     RecipeItem(
-      recipeId: 1,
+      recipeId: 9001,
       title: '에그 베네딕트',
       description: '클래식 브런치의 대표 메뉴! 촉촉한 수란과 진한 홀란다이즈 소스가 잘 구워진 잉글리시 머핀 위에 어우러진 레시피입니다.',
       ingredientsRaw: '계란, 잉글리시 머핀, 캐나다 베이컨, 홀란다이즈 소스',
@@ -191,7 +191,7 @@ class MockDataService {
       isBookmarked: true,
     ),
     RecipeItem(
-      recipeId: 2,
+      recipeId: 9002,
       title: '소세지강정',
       description: '바삭하게 튀긴 소세지에 달콤 짭조름한 강정 소스를 입힌 인기 반찬입니다.',
       ingredientsRaw: '소세지, 간장, 고추장, 올리고당, 통깨',
@@ -218,7 +218,7 @@ class MockDataService {
       scrapCount: 9,
     ),
     RecipeItem(
-      recipeId: 3,
+      recipeId: 9003,
       title: '간장버터계란밥',
       description: '따뜻한 밥 위에 버터와 간장, 계란 노른자가 어우러진 고소하고 감칠맛 나는 계란밥입니다.',
       ingredientsRaw: '밥, 계란, 버터, 간장, 참기름, 통깨',
@@ -247,7 +247,7 @@ class MockDataService {
       isBookmarked: true,
     ),
     RecipeItem(
-      recipeId: 4,
+      recipeId: 9004,
       title: '새송이버섯볶음',
       description: '쫄깃한 새송이버섯을 버터에 볶아 감칠맛을 살린 반찬입니다.',
       ingredientsRaw: '새송이버섯, 버터, 진간장, 굴소스, 통깨',
@@ -274,7 +274,7 @@ class MockDataService {
       scrapCount: 5,
     ),
     RecipeItem(
-      recipeId: 5,
+      recipeId: 9006,
       title: '참치마요덮밥',
       description: '냉장고 속 재료로 5분 만에 완성하는 간편 덮밥입니다.',
       ingredientsRaw: '참치캔, 마요네즈, 간장, 밥, 양파, 오이',
@@ -302,7 +302,7 @@ class MockDataService {
       scrapCount: 3,
     ),
     RecipeItem(
-      recipeId: 6,
+      recipeId: 9005,
       title: '된장찌개',
       description: '두부, 애호박, 버섯이 들어간 구수하고 깊은 맛의 된장찌개입니다.',
       ingredientsRaw: '된장, 두부, 애호박, 느타리버섯, 대파, 양파, 다시마육수',
@@ -331,7 +331,7 @@ class MockDataService {
       scrapCount: 30,
     ),
     RecipeItem(
-      recipeId: 7,
+      recipeId: 9007,
       title: '제육볶음',
       description: '고추장 양념에 달콤 매콤하게 볶은 돼지고기 볶음으로, 밥도둑 반찬입니다.',
       ingredientsRaw: '돼지고기, 고추장, 간장, 설탕, 참기름, 양파, 대파',
@@ -361,7 +361,7 @@ class MockDataService {
       scrapCount: 40,
     ),
     RecipeItem(
-      recipeId: 8,
+      recipeId: 9008,
       title: '달걀말이',
       description: '폭신하고 촉촉한 계란말이. 도시락 반찬으로도 최고입니다.',
       ingredientsRaw: '계란, 당근, 대파, 소금, 식용유',
@@ -389,7 +389,7 @@ class MockDataService {
       isLiked: true,
     ),
     RecipeItem(
-      recipeId: 9,
+      recipeId: 9009,
       title: '미역국',
       description: '생일, 산후 조리에 빠질 수 없는 깊고 구수한 미역국입니다.',
       ingredientsRaw: '미역, 소고기, 참기름, 간장, 다진 마늘',
@@ -417,7 +417,7 @@ class MockDataService {
       scrapCount: 35,
     ),
     RecipeItem(
-      recipeId: 10,
+      recipeId: 9010,
       title: '김치볶음밥',
       description: '신 김치와 참기름으로 만드는 정석 김치볶음밥. 5분이면 뚝딱 완성!',
       ingredientsRaw: '밥, 김치, 돼지고기, 참기름, 간장, 고추장',

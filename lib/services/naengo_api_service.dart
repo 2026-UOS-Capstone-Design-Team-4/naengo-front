@@ -141,6 +141,61 @@ class NaengoApi {
     );
   }
 
+  // ───────────────────────── 레시피 목록 API ─────────────────────────
+
+  /// 레시피 목록 조회 (`GET /api/v1/recipes`).
+  /// [ids] 를 넘기면 해당 ID 만 조회, 생략하면 전체 조회.
+  static Future<List<Map<String, dynamic>>> getRecipes({List<int>? ids}) async {
+    final uri = Uri.parse('$baseUrl/api/v1/recipes').replace(
+      queryParameters: ids != null && ids.isNotEmpty
+          ? {'ids': ids.map((e) => e.toString()).toList()}
+          : null,
+    );
+    final r = await http.get(uri);
+    if (r.statusCode != 200) {
+      throw HttpException('getRecipes ${r.statusCode}: ${r.body}', uri: uri);
+    }
+    final list = jsonDecode(utf8.decode(r.bodyBytes)) as List;
+    return list.map((e) => (e as Map).cast<String, dynamic>()).toList();
+  }
+
+  // ───────────────────────── 레시피 제출 API ─────────────────────────
+
+  /// 레시피 제출 (`POST /api/v1/pending-recipes`). 반환값: pending_recipe_id.
+  static Future<int> submitPendingRecipe(Map<String, dynamic> body) async {
+    final uri = Uri.parse('$baseUrl/api/v1/pending-recipes');
+    final r = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (r.statusCode != 201) {
+      throw HttpException('submitPendingRecipe ${r.statusCode}: ${r.body}', uri: uri);
+    }
+    final json = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+    return json['pending_recipe_id'] as int;
+  }
+
+  /// 내가 제출한 레시피 목록 (`GET /api/v1/pending-recipes`).
+  static Future<List<Map<String, dynamic>>> getMyPendingRecipes() async {
+    final uri = Uri.parse('$baseUrl/api/v1/pending-recipes');
+    final r = await http.get(uri);
+    if (r.statusCode != 200) {
+      throw HttpException('getMyPendingRecipes ${r.statusCode}: ${r.body}', uri: uri);
+    }
+    final list = jsonDecode(utf8.decode(r.bodyBytes)) as List;
+    return list.map((e) => (e as Map).cast<String, dynamic>()).toList();
+  }
+
+  /// 제출한 레시피 삭제 (`DELETE /api/v1/pending-recipes/{id}`).
+  static Future<void> deletePendingRecipe(int id) async {
+    final uri = Uri.parse('$baseUrl/api/v1/pending-recipes/$id');
+    final r = await http.delete(uri);
+    if (r.statusCode != 200) {
+      throw HttpException('deletePendingRecipe ${r.statusCode}: ${r.body}', uri: uri);
+    }
+  }
+
   // ───────────────────────── 유저 API ─────────────────────────
 
   /// 내 정보 조회 (`GET /api/v1/users/me`).

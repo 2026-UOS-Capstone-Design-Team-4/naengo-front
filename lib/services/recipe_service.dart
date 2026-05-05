@@ -1,6 +1,7 @@
 import '../data/mock_data_service.dart';
 import '../models/recipe_item.dart';
 import '../models/recipe_submit_request.dart';
+import 'naengo_api_service.dart';
 
 /// 레시피 작성/조회/삭제 인터페이스.
 ///
@@ -29,7 +30,7 @@ abstract class RecipeService {
 ///   RecipeServiceLocator.instance = RealRecipeService();
 class RecipeServiceLocator {
   RecipeServiceLocator._();
-  static RecipeService instance = MockRecipeService();
+  static RecipeService instance = RealRecipeService();
 }
 
 // ─────────────────────────────────────────────────────────
@@ -57,7 +58,6 @@ class MockRecipeService implements RecipeService {
           .map((e) => e.trim())
           .where((e) => e.isNotEmpty)
           .toList(),
-      imageUrl: request.imageUrl,
       source: 'USER',
       authorId: MockDataService.currentUser.userId,
       status: 'APPROVED',
@@ -74,5 +74,47 @@ class MockRecipeService implements RecipeService {
   @override
   Future<void> deleteMyRecipe(int recipeId) async {
     MockDataService.deleteRecipe(recipeId);
+  }
+}
+
+// ─────────────────────────────────────────────────────────
+// Real 구현 — POST/GET/DELETE /api/v1/pending-recipes
+// ─────────────────────────────────────────────────────────
+
+class RealRecipeService implements RecipeService {
+  @override
+  Future<RecipeItem> submitRecipe(RecipeSubmitRequest request) async {
+    final id = await NaengoApi.submitPendingRecipe(request.toJson());
+    final recipe = RecipeItem(
+      recipeId: id,
+      title: request.title,
+      description: request.description,
+      ingredientsRaw: request.ingredientsRaw ?? '',
+      ingredientsList: request.ingredientsRaw
+              ?.split('\n')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          [],
+      cookingSteps: request.content
+          .split('\n')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList(),
+      source: 'USER',
+      authorId: 1,
+      status: 'APPROVED', // TODO: 어드민 기능 개발 후 'PENDING'으로 교체
+      createdAt: DateTime.now(),
+    );
+    MockDataService.addRecipe(recipe);
+    return recipe;
+  }
+
+  @override
+  List<RecipeItem> getMyRecipes() => [];
+
+  @override
+  Future<void> deleteMyRecipe(int recipeId) async {
+    await NaengoApi.deletePendingRecipe(recipeId);
   }
 }

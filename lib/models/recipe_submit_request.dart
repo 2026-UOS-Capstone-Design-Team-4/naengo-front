@@ -6,14 +6,12 @@ class RecipeSubmitRequest {
   final String content; // 조리법 (NOT NULL)
   final String? description;
   final String? ingredientsRaw;
-  final String? imageUrl;
 
   const RecipeSubmitRequest({
     required this.title,
     required this.content,
     this.description,
     this.ingredientsRaw,
-    this.imageUrl,
   });
 
   Map<String, dynamic> toJson() => {
@@ -23,6 +21,5 @@ class RecipeSubmitRequest {
           'description': description,
         if (ingredientsRaw != null && ingredientsRaw!.isNotEmpty)
           'ingredients_raw': ingredientsRaw,
-        if (imageUrl != null) 'image_url': imageUrl,
       };
 }

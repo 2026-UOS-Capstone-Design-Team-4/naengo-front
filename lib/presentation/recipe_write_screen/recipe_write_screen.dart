@@ -1,12 +1,8 @@
-import 'dart:convert';
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../core/app_export.dart';
 import '../../models/recipe_submit_request.dart';
-import '../../services/camera_service.dart';
 import '../../services/recipe_service.dart';
 import '../../widgets/custom_app_bar.dart';
 
@@ -25,8 +21,6 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
   final _ingredientsController = TextEditingController();
   final _contentController = TextEditingController();
 
-  XFile? _selectedImage;
-  Uint8List? _selectedImageBytes;
   bool _isSubmitting = false;
 
   @override
@@ -36,78 +30,6 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
     _ingredientsController.dispose();
     _contentController.dispose();
     super.dispose();
-  }
-
-  // ── 이미지 선택 ────────────────────────────────────────
-
-  Future<void> _setImage(XFile file) async {
-    final bytes = await file.readAsBytes(); // 웹/모바일 모두 동작
-    setState(() {
-      _selectedImage = file;
-      _selectedImageBytes = bytes;
-    });
-  }
-
-  void _onAddPhoto() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: appTheme.background,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.h)),
-      ),
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(height: 8.h),
-            Container(
-              width: 40.h,
-              height: 4.h,
-              decoration: BoxDecoration(
-                color: appTheme.lightbasis,
-                borderRadius: BorderRadius.circular(2.h),
-              ),
-            ),
-            SizedBox(height: 16.h),
-            ListTile(
-              leading: Icon(Icons.camera_alt_outlined, color: appTheme.mainUI),
-              title: Text('카메라로 촬영',
-                  style: TextStyleHelper.instance.body15MediumNotoSansKR),
-              onTap: () async {
-                Navigator.pop(context);
-                final file = await CameraService.takePhoto();
-                if (file != null) _setImage(file);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.photo_library_outlined, color: appTheme.mainUI),
-              title: Text('갤러리에서 선택',
-                  style: TextStyleHelper.instance.body15MediumNotoSansKR),
-              onTap: () async {
-                Navigator.pop(context);
-                final file = await CameraService.pickFromGallery();
-                if (file != null) _setImage(file);
-              },
-            ),
-            if (_selectedImage != null)
-              ListTile(
-                leading: Icon(Icons.delete_outline, color: appTheme.mainUI),
-                title: Text('사진 삭제',
-                    style: TextStyleHelper.instance.body15MediumNotoSansKR
-                        .copyWith(color: appTheme.mainUI)),
-                onTap: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _selectedImage = null;
-                    _selectedImageBytes = null;
-                  });
-                },
-              ),
-            SizedBox(height: 8.h),
-          ],
-        ),
-      ),
-    );
   }
 
   // ── 제출 ───────────────────────────────────────────────
@@ -128,14 +50,6 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      // Mock: bytes → base64 data URL로 변환해 imageUrl에 저장.
-      // API 연결 후: POST /api/v1/recipes/image 호출 결과 URL로 이 줄만 교체.
-      String? imageUrl;
-      if (_selectedImageBytes != null) {
-        final b64 = base64Encode(_selectedImageBytes!);
-        imageUrl = 'data:image/jpeg;base64,$b64';
-      }
-
       final request = RecipeSubmitRequest(
         title: title,
         content: content,
@@ -145,15 +59,15 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
         ingredientsRaw: _ingredientsController.text.trim().isEmpty
             ? null
             : _ingredientsController.text.trim(),
-        imageUrl: imageUrl,
       );
 
       await _recipeService.submitRecipe(request);
 
       if (!mounted) return;
       _showSnackBar('레시피가 등록되었어요!');
-      Navigator.pop(context, true); // true = 새 레시피 추가됨
+      Navigator.pop(context, true);
     } catch (e) {
+      debugPrint('[RecipeWrite] 등록 실패: $e');
       if (!mounted) return;
       _showSnackBar('등록에 실패했어요. 다시 시도해주세요.');
     } finally {
@@ -187,8 +101,6 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
                   padding:
                       EdgeInsets.symmetric(horizontal: 16.h, vertical: 20.h),
                   children: [
-                    _buildImagePicker(),
-                    SizedBox(height: 24.h),
                     _buildTitleField(),
                     SizedBox(height: 20.h),
                     _buildSection(
@@ -223,43 +135,6 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  // ── 이미지 피커 영역 ───────────────────────────────────
-
-  Widget _buildImagePicker() {
-    return GestureDetector(
-      onTap: _onAddPhoto,
-      child: _selectedImageBytes != null
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(12.h),
-              child: Image.memory(
-                _selectedImageBytes!,
-                height: 180.h,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            )
-          : Column(
-              children: [
-                Container(
-                  width: 52.h,
-                  height: 52.h,
-                  decoration: BoxDecoration(
-                    color: appTheme.verylight,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.add, color: appTheme.mainUI, size: 32.h),
-                ),
-                SizedBox(height: 8.h),
-                Text(
-                  '사진 추가하기',
-                  style: TextStyleHelper.instance.body15RegularNanumSquareAc
-                      .copyWith(color: appTheme.mainUI),
-                ),
-              ],
-            ),
     );
   }
 

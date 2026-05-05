@@ -61,4 +61,9 @@ class AppColors {
   Color get disabled => const Color(0xFF8391A1);       // 비활성 아이콘·보조
   Color get middle => const Color(0xFFFF7777);       // 중간 강조
   Color get maximumlight => const Color(0xFFFFFBFB); // 최대 연한 배경
+
+  // ────────────────────── status colors ──────────────────────
+  Color get approved => const Color(0xFF4CAF50); // 승인됨
+  Color get pending  => const Color(0xFFFF9800); // 검토중
+  Color get rejected => const Color(0xFFE53935); // 반려됨
 }
