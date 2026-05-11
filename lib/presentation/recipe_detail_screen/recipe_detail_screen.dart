@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import '../../core/app_export.dart';
 import '../../data/mock_data_service.dart';
 import '../../models/recipe_item.dart';
+import '../../services/naengo_api_service.dart';
+import '../../widgets/naengo_snackbar.dart';
 
 class RecipeDetailScreen extends StatefulWidget {
   final RecipeItem recipe;
@@ -25,22 +27,110 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     _isBookmarked = widget.recipe.isBookmarked;
   }
 
-  void _toggleLike() {
+  Future<void> _toggleLike() async {
+    if (widget.recipe.status != 'APPROVED' || !widget.recipe.isOfficialRecipe) {
+      return;
+    }
+    final previousLiked = _isLiked;
+    final previousLikes = widget.recipe.likesCount;
+    final previousScraps = widget.recipe.scrapCount;
+    final nextLiked = !_isLiked;
     setState(() {
-      _isLiked = !_isLiked;
+      _isLiked = nextLiked;
       widget.recipe.isLiked = _isLiked;
       widget.recipe.likesCount += _isLiked ? 1 : -1;
     });
-    MockDataService.notifyLikesChanged();
+    if (_isLocalOnlyRecipe) {
+      MockDataService.notifyLikesChanged();
+      return;
+    }
+    try {
+      final stats =
+          await NaengoApi.setRecipeLike(widget.recipe.recipeId, liked: nextLiked);
+      if (!mounted) return;
+      setState(() {
+        widget.recipe.likesCount =
+            stats['likes_count'] ?? widget.recipe.likesCount;
+        widget.recipe.scrapCount =
+            stats['scrap_count'] ?? widget.recipe.scrapCount;
+      });
+      MockDataService.notifyLikesChanged();
+    } catch (_) {
+      if (await _syncRecipeFromServer()) {
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _isLiked = previousLiked;
+        widget.recipe.isLiked = previousLiked;
+        widget.recipe.likesCount = previousLikes;
+        widget.recipe.scrapCount = previousScraps;
+      });
+      NaengoSnackBar.show(context, '좋아요 변경에 실패했어요.');
+    }
   }
 
-  void _toggleBookmark() {
+  Future<void> _toggleBookmark() async {
+    if (widget.recipe.status != 'APPROVED' || !widget.recipe.isOfficialRecipe) {
+      return;
+    }
+    final previousScrapped = _isBookmarked;
+    final previousLikes = widget.recipe.likesCount;
+    final previousScraps = widget.recipe.scrapCount;
+    final nextScrapped = !_isBookmarked;
     setState(() {
-      _isBookmarked = !_isBookmarked;
+      _isBookmarked = nextScrapped;
       widget.recipe.isBookmarked = _isBookmarked;
       widget.recipe.scrapCount += _isBookmarked ? 1 : -1;
     });
+    if (_isLocalOnlyRecipe) return;
+    try {
+      final stats = await NaengoApi.setRecipeScrap(
+        widget.recipe.recipeId,
+        scrapped: nextScrapped,
+      );
+      if (!mounted) return;
+      setState(() {
+        widget.recipe.likesCount =
+            stats['likes_count'] ?? widget.recipe.likesCount;
+        widget.recipe.scrapCount =
+            stats['scrap_count'] ?? widget.recipe.scrapCount;
+      });
+    } catch (_) {
+      if (await _syncRecipeFromServer()) {
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        _isBookmarked = previousScrapped;
+        widget.recipe.isBookmarked = previousScrapped;
+        widget.recipe.likesCount = previousLikes;
+        widget.recipe.scrapCount = previousScraps;
+      });
+      NaengoSnackBar.show(context, '스크랩 변경에 실패했어요.');
+    }
   }
+
+  Future<bool> _syncRecipeFromServer() async {
+    if (!widget.recipe.isOfficialRecipe) return false;
+    try {
+      final fresh = await NaengoApi.getRecipe(widget.recipe.recipeId);
+      if (!mounted) return true;
+      setState(() {
+        _isLiked = fresh.isLiked;
+        _isBookmarked = fresh.isScrapped;
+        widget.recipe.isLiked = fresh.isLiked;
+        widget.recipe.isBookmarked = fresh.isScrapped;
+        widget.recipe.likesCount = fresh.likesCount;
+        widget.recipe.scrapCount = fresh.scrapCount;
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool get _isLocalOnlyRecipe => widget.recipe.recipeId >= 9000;
 
   @override
   Widget build(BuildContext context) {
@@ -186,25 +276,27 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    GestureDetector(
-                      onTap: _toggleLike,
-                      child: Icon(
-                        _isLiked ? Icons.favorite : Icons.favorite_border,
-                        color: appTheme.mainUI,
-                        size: 24.h,
+                    if (widget.recipe.isOfficialRecipe) ...[
+                      GestureDetector(
+                        onTap: _toggleLike,
+                        child: Icon(
+                          _isLiked ? Icons.favorite : Icons.favorite_border,
+                          color: appTheme.mainUI,
+                          size: 24.h,
+                        ),
                       ),
-                    ),
-                    SizedBox(width: 10.h),
-                    GestureDetector(
-                      onTap: _toggleBookmark,
-                      child: Icon(
-                        _isBookmarked
-                            ? Icons.bookmark
-                            : Icons.bookmark_border,
-                        color: appTheme.mainUI,
-                        size: 24.h,
+                      SizedBox(width: 10.h),
+                      GestureDetector(
+                        onTap: _toggleBookmark,
+                        child: Icon(
+                          _isBookmarked
+                              ? Icons.bookmark
+                              : Icons.bookmark_border,
+                          color: appTheme.mainUI,
+                          size: 24.h,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),

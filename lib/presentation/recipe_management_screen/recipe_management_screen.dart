@@ -238,9 +238,16 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
               iconPath: ImageConstant.imgPencilSharp,
               title: '레시피 작성하기',
               isActive: false,
-              onTap: () {
+              onTap: () async {
                 widget.onClose?.call();
-                Navigator.pushNamed(context, AppRoutes.recipeWriteScreen);
+                final submitted = await Navigator.pushNamed(
+                  context,
+                  AppRoutes.recipeWriteScreen,
+                );
+                if (!mounted) return;
+                if (submitted == true) {
+                  widget.onNavigateToBoard?.call();
+                }
               },
             ),
             SizedBox(height: 8.h),

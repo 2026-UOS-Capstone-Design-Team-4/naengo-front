@@ -20,6 +20,7 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
   final _descriptionController = TextEditingController();
   final _ingredientsController = TextEditingController();
   final _contentController = TextEditingController();
+  final _categoryController = TextEditingController();
   final _cookingTimeController = TextEditingController();
   final _servingsController = TextEditingController();
   final _caloriesController = TextEditingController();
@@ -34,6 +35,7 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
     _descriptionController.dispose();
     _ingredientsController.dispose();
     _contentController.dispose();
+    _categoryController.dispose();
     _cookingTimeController.dispose();
     _servingsController.dispose();
     _caloriesController.dispose();
@@ -45,6 +47,13 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
   Future<void> _onSubmit() async {
     final title = _titleController.text.trim();
     final content = _contentController.text.trim();
+    final description = _descriptionController.text.trim();
+    final ingredients = _ingredientsController.text.trim();
+    final category = _categoryController.text
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
 
     if (title.isEmpty) {
       NaengoSnackBar.show(context,'레시피 이름을 입력해주세요.');
@@ -54,8 +63,20 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
       NaengoSnackBar.show(context,'난이도를 선택해주세요.');
       return;
     }
+    if (description.isEmpty) {
+      NaengoSnackBar.show(context, '간단한 소개를 입력해주세요.');
+      return;
+    }
+    if (ingredients.isEmpty) {
+      NaengoSnackBar.show(context, '필요한 재료를 입력해주세요.');
+      return;
+    }
     if (content.isEmpty) {
       NaengoSnackBar.show(context,'조리법을 입력해주세요.');
+      return;
+    }
+    if (category.isEmpty) {
+      NaengoSnackBar.show(context, '카테고리를 입력해주세요.');
       return;
     }
 
@@ -65,26 +86,34 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
       final cookingTimeRaw = _cookingTimeController.text.trim();
       final servingsRaw = _servingsController.text.trim();
       final caloriesRaw = _caloriesController.text.trim();
+      final cookingTime = int.tryParse(cookingTimeRaw);
+      final servings = double.tryParse(servingsRaw);
+
+      if (cookingTime == null || cookingTime <= 0) {
+        NaengoSnackBar.show(context, '조리시간을 숫자로 입력해주세요.');
+        return;
+      }
+      if (servings == null || servings <= 0) {
+        NaengoSnackBar.show(context, '인분을 숫자로 입력해주세요.');
+        return;
+      }
 
       final request = RecipeSubmitRequest(
         title: title,
         content: content,
         difficulty: _selectedDifficulty!,
-        description: _descriptionController.text.trim().isEmpty
-            ? null
-            : _descriptionController.text.trim(),
-        ingredientsRaw: _ingredientsController.text.trim().isEmpty
-            ? null
-            : _ingredientsController.text.trim(),
-        cookingTime: cookingTimeRaw.isEmpty ? null : int.tryParse(cookingTimeRaw),
-        servings: servingsRaw.isEmpty ? null : double.tryParse(servingsRaw),
+        description: description,
+        ingredientsRaw: ingredients,
+        cookingTime: cookingTime,
+        servings: servings,
         calories: caloriesRaw.isEmpty ? null : int.tryParse(caloriesRaw),
+        category: category,
       );
 
       await _recipeService.submitRecipe(request);
 
       if (!mounted) return;
-      NaengoSnackBar.show(context,'레시피가 등록되었어요!');
+      NaengoSnackBar.show(context,'레시피가 검토 요청되었어요!');
       Navigator.pop(context, true);
     } catch (e) {
       debugPrint('[RecipeWrite] 등록 실패: $e');
@@ -127,6 +156,14 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
                     ),
                     SizedBox(height: 20.h),
                     _buildMetaSection(),
+                    SizedBox(height: 20.h),
+                    _buildSection(
+                      label: '카테고리',
+                      controller: _categoryController,
+                      hint: '예: 한식, 찌개',
+                      minLines: 1,
+                      maxLines: 2,
+                    ),
                     SizedBox(height: 20.h),
                     _buildSection(
                       label: '필요한 재료',

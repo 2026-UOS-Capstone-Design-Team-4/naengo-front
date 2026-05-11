@@ -19,6 +19,11 @@ class Recipe {
   final String? videoUrl;
   final String? imageUrl;
   final String authorType; // 'ADMIN' | 'USER'
+  final int likesCount;
+  final int scrapCount;
+  final bool isLiked;
+  final bool isScrapped;
+  final DateTime? createdAt;
 
   const Recipe({
     required this.id,
@@ -37,6 +42,11 @@ class Recipe {
     this.videoUrl,
     this.imageUrl,
     required this.authorType,
+    this.likesCount = 0,
+    this.scrapCount = 0,
+    this.isLiked = false,
+    this.isScrapped = false,
+    this.createdAt,
   });
 
   factory Recipe.fromJson(Map<String, dynamic> json) {
@@ -67,6 +77,13 @@ class Recipe {
       videoUrl: json['video_url'] as String?,
       imageUrl: json['image_url'] as String?,
       authorType: json['author_type'] as String? ?? 'ADMIN',
+      likesCount: json['likes_count'] as int? ?? 0,
+      scrapCount: json['scrap_count'] as int? ?? 0,
+      isLiked: json['is_liked'] as bool? ?? false,
+      isScrapped: json['is_scrapped'] as bool? ?? false,
+      createdAt: json['created_at'] == null
+          ? null
+          : DateTime.tryParse(json['created_at'] as String),
     );
   }
 }

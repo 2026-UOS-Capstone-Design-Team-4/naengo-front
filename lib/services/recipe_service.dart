@@ -60,12 +60,13 @@ class MockRecipeService implements RecipeService {
           .toList(),
       source: 'USER',
       authorId: MockDataService.currentUser.userId,
-      status: 'APPROVED',
+      status: 'PENDING',
       createdAt: DateTime.now(),
       difficulty: request.difficulty,
       cookingTime: request.cookingTime,
       servings: request.servings,
       calories: request.calories,
+      category: request.category,
     );
 
     MockDataService.addRecipe(recipe);
@@ -107,14 +108,15 @@ class RealRecipeService implements RecipeService {
           .toList(),
       source: 'USER',
       authorId: 1,
-      status: 'APPROVED', // TODO: 어드민 기능 개발 후 'PENDING'으로 교체
+      status: 'PENDING',
       createdAt: DateTime.now(),
       difficulty: request.difficulty,
       cookingTime: request.cookingTime,
       servings: request.servings,
       calories: request.calories,
+      category: request.category,
     );
-    MockDataService.addRecipe(recipe);
+    MockDataService.notifyRecipesChanged();
     return recipe;
   }
 

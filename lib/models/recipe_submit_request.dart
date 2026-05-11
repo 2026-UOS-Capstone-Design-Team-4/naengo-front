@@ -10,6 +10,7 @@ class RecipeSubmitRequest {
   final int? cookingTime; // 분 (선택)
   final double? servings; // 인분 (선택)
   final int? calories; // kcal (선택)
+  final List<String> category;
 
   const RecipeSubmitRequest({
     required this.title,
@@ -20,12 +21,14 @@ class RecipeSubmitRequest {
     this.cookingTime,
     this.servings,
     this.calories,
+    this.category = const [],
   });
 
   Map<String, dynamic> toJson() => {
         'title': title,
         'content': content,
         'difficulty': difficulty,
+        'category': category,
         if (description != null && description!.isNotEmpty)
           'description': description,
         if (ingredientsRaw != null && ingredientsRaw!.isNotEmpty)

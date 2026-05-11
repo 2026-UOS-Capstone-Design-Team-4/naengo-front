@@ -15,6 +15,7 @@ class RecipeItem {
   final int? cookingTime; // minutes
   final double? servings; // 인분
   final int? calories; // kcal
+  final List<String> category;
 
   // Recipe_Stats
   int likesCount; // likes_count
@@ -23,6 +24,7 @@ class RecipeItem {
   // Derived from Likes / Scraps for current user
   bool isLiked;
   bool isBookmarked;
+  final bool isOfficialRecipe;
 
   RecipeItem({
     required this.recipeId,
@@ -41,9 +43,11 @@ class RecipeItem {
     this.cookingTime,
     this.servings,
     this.calories,
+    this.category = const [],
     this.likesCount = 0,
     this.scrapCount = 0,
     this.isLiked = false,
     this.isBookmarked = false,
+    this.isOfficialRecipe = true,
   });
 }

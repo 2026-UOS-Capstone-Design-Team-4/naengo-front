@@ -187,19 +187,98 @@ class NaengoApi {
   // ───────────────────────── 레시피 목록 API ─────────────────────────
 
   /// 레시피 목록 조회 (`GET /api/v1/recipes`).
-  /// [ids] 를 넘기면 해당 ID 만 조회, 생략하면 전체 조회.
-  static Future<List<Map<String, dynamic>>> getRecipes({List<int>? ids}) async {
+  static Future<List<Recipe>> getRecipes({
+    String sort = 'latest',
+    int limit = 20,
+  }) async {
     final uri = Uri.parse('$baseUrl/api/v1/recipes').replace(
-      queryParameters: ids != null && ids.isNotEmpty
-          ? {'ids': ids.map((e) => e.toString()).toList()}
-          : null,
+      queryParameters: {
+        'sort': sort,
+        'limit': limit.toString(),
+      },
     );
     final r = await http.get(uri);
     if (r.statusCode != 200) {
       throw HttpException('getRecipes ${r.statusCode}: ${r.body}', uri: uri);
     }
-    final list = jsonDecode(utf8.decode(r.bodyBytes)) as List;
-    return list.map((e) => (e as Map).cast<String, dynamic>()).toList();
+    final decoded = jsonDecode(utf8.decode(r.bodyBytes));
+    final items = decoded is Map<String, dynamic>
+        ? decoded['items'] as List? ?? const []
+        : decoded as List? ?? const [];
+    return items
+        .map((e) => Recipe.fromJson((e as Map).cast<String, dynamic>()))
+        .toList(growable: false);
+  }
+
+  /// 레시피 단건 조회 (`GET /api/v1/recipes/{recipe_id}`).
+  static Future<Recipe> getRecipe(int recipeId) async {
+    final uri = Uri.parse('$baseUrl/api/v1/recipes/$recipeId');
+    final r = await http.get(uri);
+    if (r.statusCode != 200) {
+      throw HttpException('getRecipe ${r.statusCode}: ${r.body}', uri: uri);
+    }
+    return Recipe.fromJson(
+      jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>,
+    );
+  }
+
+  /// 내가 스크랩한 레시피 목록 (`GET /api/v1/users/me/scraps`).
+  static Future<List<Recipe>> getMyScraps({int limit = 20}) async {
+    final uri = Uri.parse('$baseUrl/api/v1/users/me/scraps').replace(
+      queryParameters: {'limit': limit.toString()},
+    );
+    final r = await http.get(uri);
+    if (r.statusCode != 200) {
+      throw HttpException('getMyScraps ${r.statusCode}: ${r.body}', uri: uri);
+    }
+    final decoded = jsonDecode(utf8.decode(r.bodyBytes));
+    final items = decoded is Map<String, dynamic>
+        ? decoded['items'] as List? ?? const []
+        : decoded as List? ?? const [];
+    return items
+        .map((e) => Recipe.fromJson((e as Map).cast<String, dynamic>()))
+        .toList(growable: false);
+  }
+
+  static Future<Map<String, int>> setRecipeLike(
+    int recipeId, {
+    required bool liked,
+  }) =>
+      _toggleRecipeReaction(
+        recipeId: recipeId,
+        kind: 'likes',
+        enabled: liked,
+      );
+
+  static Future<Map<String, int>> setRecipeScrap(
+    int recipeId, {
+    required bool scrapped,
+  }) =>
+      _toggleRecipeReaction(
+        recipeId: recipeId,
+        kind: 'scraps',
+        enabled: scrapped,
+      );
+
+  static Future<Map<String, int>> _toggleRecipeReaction({
+    required int recipeId,
+    required String kind,
+    required bool enabled,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/v1/recipes/$recipeId/$kind');
+    final r = enabled ? await http.post(uri) : await http.delete(uri);
+    if (r.statusCode < 200 || r.statusCode >= 300) {
+      throw HttpException(
+        '$kind ${enabled ? 'POST' : 'DELETE'} ${r.statusCode}: ${r.body}',
+        uri: uri,
+      );
+    }
+    if (r.bodyBytes.isEmpty) return {};
+    final json = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+    return {
+      'likes_count': json['likes_count'] as int? ?? 0,
+      'scrap_count': json['scrap_count'] as int? ?? 0,
+    };
   }
 
   // ───────────────────────── 레시피 제출 API ─────────────────────────
