@@ -62,6 +62,8 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                       _buildRecipeCard(),
                       SizedBox(height: 14.h),
                       _buildDescription(),
+                      SizedBox(height: 14.h),
+                      _buildInfoRow(),
                       SizedBox(height: 18.h),
                       _buildSection(
                         title: '필요한 재료',
@@ -230,6 +232,93 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
           width: 30.h,
           height: 2.h,
           color: appTheme.mainUI,
+        ),
+      ],
+    );
+  }
+
+  String _difficultyLabel(String? difficulty) {
+    switch (difficulty) {
+      case 'easy':
+        return '쉬움';
+      case 'hard':
+        return '어려움';
+      default:
+        return '보통';
+    }
+  }
+
+  Widget _buildInfoChip({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 10.h),
+        decoration: BoxDecoration(
+          color: appTheme.verylight,
+          borderRadius: BorderRadius.circular(10.h),
+          border: Border.all(color: appTheme.lightbasis, width: 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: appTheme.mainUI, size: 20.h),
+            SizedBox(height: 4.h),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10.fSize,
+                color: appTheme.disabled,
+                fontFamily: 'NanumSquare ac',
+              ),
+            ),
+            SizedBox(height: 2.h),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 12.fSize,
+                fontWeight: FontWeight.w700,
+                color: appTheme.middle,
+                fontFamily: 'NanumSquare ac',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow() {
+    final r = widget.recipe;
+    final servingsText = r.servings != null
+        ? '${r.servings!.toStringAsFixed(r.servings! % 1 == 0 ? 0 : 1)}인분'
+        : '-';
+    return Row(
+      children: [
+        _buildInfoChip(
+          icon: Icons.bar_chart_rounded,
+          label: '난이도',
+          value: _difficultyLabel(r.difficulty),
+        ),
+        SizedBox(width: 8.h),
+        _buildInfoChip(
+          icon: Icons.access_time_rounded,
+          label: '조리시간',
+          value: r.cookingTime != null ? '${r.cookingTime}분' : '-',
+        ),
+        SizedBox(width: 8.h),
+        _buildInfoChip(
+          icon: Icons.people_outline_rounded,
+          label: '양',
+          value: servingsText,
+        ),
+        SizedBox(width: 8.h),
+        _buildInfoChip(
+          icon: Icons.local_fire_department_rounded,
+          label: '열량',
+          value: r.calories != null ? '${r.calories} kcal' : '-',
         ),
       ],
     );

@@ -11,6 +11,10 @@ class RecipeItem {
   final int? authorId; // author_id → Users.user_id
   final String status; // 'APPROVED' | 'PENDING' | 'REJECTED'
   final DateTime createdAt; // created_at
+  final String? difficulty; // 'easy' | 'normal' | 'hard'
+  final int? cookingTime; // minutes
+  final double? servings; // 인분
+  final int? calories; // kcal
 
   // Recipe_Stats
   int likesCount; // likes_count
@@ -33,6 +37,10 @@ class RecipeItem {
     this.authorId,
     this.status = 'APPROVED',
     required this.createdAt,
+    this.difficulty,
+    this.cookingTime,
+    this.servings,
+    this.calories,
     this.likesCount = 0,
     this.scrapCount = 0,
     this.isLiked = false,
