@@ -6,6 +6,7 @@ import '../../data/mock_data_service.dart';
 import '../../models/recipe_item.dart';
 import '../../services/naengo_api_service.dart';
 import '../recipe_detail_screen/recipe_detail_screen.dart';
+import '../../widgets/naengo_snackbar.dart';
 export '../../models/recipe_item.dart';
 
 enum SortType { latest, mostLiked, bookmarked }
@@ -515,9 +516,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
       setState(() => _myRecipes.removeWhere((r) => r.recipeId == recipe.recipeId));
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('삭제에 실패했어요.')),
-      );
+      NaengoSnackBar.show(context, '삭제에 실패했어요.');
     }
   }
 

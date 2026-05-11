@@ -5,6 +5,7 @@ import '../../data/mock_data_service.dart';
 import '../../models/chat_room.dart';
 import '../../services/naengo_api_service.dart';
 import '../../widgets/custom_image_view.dart';
+import '../../widgets/naengo_snackbar.dart';
 
 class RecipeManagementScreen extends StatefulWidget {
   final VoidCallback? onClose;
@@ -96,11 +97,10 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
       setState(() {
         MockDataService.chatRooms = previousRooms;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('채팅방 삭제에 실패했어요. 잠시 후 다시 시도해주세요.'),
-          duration: const Duration(seconds: 2),
-        ),
+      NaengoSnackBar.show(
+        context,
+        '채팅방 삭제에 실패했어요. 잠시 후 다시 시도해주세요.',
+        duration: const Duration(seconds: 2),
       );
     }
   }

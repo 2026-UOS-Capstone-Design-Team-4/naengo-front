@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_export.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/naengo_snackbar.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key});
@@ -68,7 +69,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     final nickname = _nicknameController.text.trim();
     if (nickname.isEmpty) return;
     await _auth.updateNickname(nickname);
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    NaengoSnackBar.show(context, '프로필이 저장되었어요.');
   }
 
   // ── 취향 편집 ───────────────────────────────────────────
@@ -97,16 +100,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         _isEditingPreference = false;
         _isSavingPreference = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('취향이 저장되었어요.')),
-      );
+      NaengoSnackBar.show(context, '취향이 저장되었어요.');
     } catch (e) {
       debugPrint('[ProfileSettings] 취향 저장 실패: $e');
       if (!mounted) return;
       setState(() => _isSavingPreference = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('저장에 실패했어요. 다시 시도해주세요.')),
-      );
+      NaengoSnackBar.show(context, '저장에 실패했어요. 다시 시도해주세요.');
     }
   }
 
@@ -424,9 +423,7 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('저장에 실패했어요. 다시 시도해주세요.')),
-      );
+      NaengoSnackBar.show(context, '저장에 실패했어요. 다시 시도해주세요.');
     }
   }
 
@@ -470,10 +467,7 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
                     right: 0,
                     child: GestureDetector(
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('프로필 사진 업로드는 준비 중이에요.')),
-                        );
+                        NaengoSnackBar.show(context, '프로필 사진 업로드는 준비 중이에요.');
                       },
                       child: Container(
                         padding: EdgeInsets.all(6.h),

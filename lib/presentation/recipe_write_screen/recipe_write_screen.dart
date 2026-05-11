@@ -4,6 +4,7 @@ import '../../core/app_export.dart';
 import '../../models/recipe_submit_request.dart';
 import '../../services/recipe_service.dart';
 import '../../widgets/custom_app_bar.dart';
+import '../../widgets/naengo_snackbar.dart';
 
 class RecipeWriteScreen extends StatefulWidget {
   const RecipeWriteScreen({super.key});
@@ -46,15 +47,15 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
     final content = _contentController.text.trim();
 
     if (title.isEmpty) {
-      _showSnackBar('레시피 이름을 입력해주세요.');
+      NaengoSnackBar.show(context,'레시피 이름을 입력해주세요.');
       return;
     }
     if (_selectedDifficulty == null) {
-      _showSnackBar('난이도를 선택해주세요.');
+      NaengoSnackBar.show(context,'난이도를 선택해주세요.');
       return;
     }
     if (content.isEmpty) {
-      _showSnackBar('조리법을 입력해주세요.');
+      NaengoSnackBar.show(context,'조리법을 입력해주세요.');
       return;
     }
 
@@ -83,20 +84,15 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
       await _recipeService.submitRecipe(request);
 
       if (!mounted) return;
-      _showSnackBar('레시피가 등록되었어요!');
+      NaengoSnackBar.show(context,'레시피가 등록되었어요!');
       Navigator.pop(context, true);
     } catch (e) {
       debugPrint('[RecipeWrite] 등록 실패: $e');
       if (!mounted) return;
-      _showSnackBar('등록에 실패했어요. 다시 시도해주세요.');
+      NaengoSnackBar.show(context,'등록에 실패했어요. 다시 시도해주세요.');
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   // ── 빌드 ───────────────────────────────────────────────
