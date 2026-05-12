@@ -335,13 +335,16 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
       top: 46.h,
       right: 16.h,
       child: Material(
-        elevation: 4,
+        elevation: 3,
         borderRadius: BorderRadius.circular(12.h),
+        shadowColor: Colors.black.withValues(alpha: 0.1),
         child: Container(
-          width: 120.h,
+          width: 130.h,
+          padding: EdgeInsets.all(6.h),
           decoration: BoxDecoration(
             color: appTheme.background,
             borderRadius: BorderRadius.circular(12.h),
+            border: Border.all(color: appTheme.basis, width: 1),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -368,18 +371,24 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
       },
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.symmetric(vertical: 10.h, horizontal: 16.h),
+        padding: EdgeInsets.symmetric(vertical: 9.h, horizontal: 12.h),
         decoration: BoxDecoration(
-          color: isSelected ? appTheme.basis : appTheme.background,
-          borderRadius: BorderRadius.circular(12.h),
+          color: isSelected ? appTheme.verylight : Colors.transparent,
+          borderRadius: BorderRadius.circular(8.h),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : appTheme.text,
-            fontSize: 13.fSize,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-          ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? appTheme.basis : appTheme.disabled,
+                  fontSize: 13.fSize,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

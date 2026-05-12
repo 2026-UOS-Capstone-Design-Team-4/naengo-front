@@ -26,6 +26,7 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
   final _caloriesController = TextEditingController();
 
   String? _selectedDifficulty;
+  bool _isDifficultyDropdownOpen = false;
 
   bool _isSubmitting = false;
 
@@ -128,7 +129,14 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return GestureDetector(
+      onTap: () {
+        if (_isDifficultyDropdownOpen) {
+          setState(() => _isDifficultyDropdownOpen = false);
+        }
+      },
+      behavior: HitTestBehavior.translucent,
+      child: Scaffold(
       backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: true,
       body: Container(
@@ -189,6 +197,7 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -236,39 +245,11 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
               .copyWith(color: appTheme.mainUI),
         ),
         SizedBox(height: 8.h),
-        Container(
-          decoration: BoxDecoration(
-            color: appTheme.verylight,
-            borderRadius: BorderRadius.circular(12.h),
-            border: _selectedDifficulty == null
-                ? Border.all(color: appTheme.lightbasis, width: 1)
-                : null,
-          ),
-          padding: EdgeInsets.symmetric(horizontal: 14.h, vertical: 4.h),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: _selectedDifficulty,
-              isExpanded: true,
-              hint: Text(
-                '난이도 선택 (필수)',
-                style: TextStyleHelper.instance.body15RegularNanumSquareAc
-                    .copyWith(color: appTheme.lightbasis),
-              ),
-              icon: Icon(Icons.keyboard_arrow_down_rounded,
-                  color: appTheme.mainUI, size: 22.h),
-              dropdownColor: appTheme.verylight,
-              style: TextStyleHelper.instance.body15RegularNanumSquareAc
-                  .copyWith(color: appTheme.text),
-              items: _difficultyOptions
-                  .map((opt) => DropdownMenuItem(
-                        value: opt.$1,
-                        child: Text(opt.$2),
-                      ))
-                  .toList(),
-              onChanged: (val) => setState(() => _selectedDifficulty = val),
-            ),
-          ),
-        ),
+        _buildDifficultyButton(),
+        if (_isDifficultyDropdownOpen) ...[
+          SizedBox(height: 4.h),
+          _buildDifficultyDropdown(),
+        ],
         SizedBox(height: 10.h),
         Row(
           children: [
@@ -292,6 +273,107 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildDifficultyButton() {
+    final selected = _difficultyOptions
+        .where((o) => o.$1 == _selectedDifficulty)
+        .map((o) => o.$2)
+        .firstOrNull;
+    final hasSelection = selected != null;
+    final color = hasSelection ? appTheme.basis : appTheme.lightbasis;
+
+    return GestureDetector(
+      onTap: () =>
+          setState(() => _isDifficultyDropdownOpen = !_isDifficultyDropdownOpen),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(horizontal: 10.h, vertical: 8.h),
+        decoration: BoxDecoration(
+          border: Border.all(color: color, width: 1),
+          borderRadius: BorderRadius.circular(20.h),
+          color: appTheme.verylight,
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.swap_vert, color: color, size: 14),
+            SizedBox(width: 4.h),
+            Expanded(
+              child: Text(
+                selected ?? '난이도 선택 (필수)',
+                style: TextStyle(
+                  color: color,
+                  fontSize: 13.fSize,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Icon(
+              _isDifficultyDropdownOpen
+                  ? Icons.keyboard_arrow_up
+                  : Icons.keyboard_arrow_down,
+              color: color,
+              size: 14,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDifficultyDropdown() {
+    return Material(
+      elevation: 3,
+      borderRadius: BorderRadius.circular(12.h),
+      shadowColor: Colors.black.withValues(alpha: 0.1),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(6.h),
+        decoration: BoxDecoration(
+          color: appTheme.background,
+          borderRadius: BorderRadius.circular(12.h),
+          border: Border.all(color: appTheme.basis, width: 1),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: _difficultyOptions.map((opt) {
+            final isSelected = _selectedDifficulty == opt.$1;
+            return GestureDetector(
+              onTap: () => setState(() {
+                _selectedDifficulty = opt.$1;
+                _isDifficultyDropdownOpen = false;
+              }),
+              child: Container(
+                width: double.infinity,
+                padding:
+                    EdgeInsets.symmetric(vertical: 9.h, horizontal: 12.h),
+                decoration: BoxDecoration(
+                  color: isSelected ? appTheme.verylight : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8.h),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        opt.$2,
+                        style: TextStyle(
+                          color: isSelected ? appTheme.basis : appTheme.disabled,
+                          fontSize: 13.fSize,
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                    if (isSelected)
+                      Icon(Icons.check_rounded, color: appTheme.basis, size: 15),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 
