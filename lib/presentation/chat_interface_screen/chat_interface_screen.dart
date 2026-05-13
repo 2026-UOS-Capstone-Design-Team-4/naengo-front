@@ -772,7 +772,7 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
         borderRadius: BorderRadius.circular(14.h),
         clipBehavior: Clip.antiAlias, // 카드 모서리 밖으로 ripple 새지 않게
         child: InkWell(
-          onTap: () => _navigateToRecipeDetail(r),
+          onTap: () { _navigateToRecipeDetail(r); },
           splashColor: const Color(0xFFFF5252).withAlpha(40),
           highlightColor: const Color(0xFFFF5252).withAlpha(15),
           child: Container(
@@ -863,27 +863,36 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
     );
   }
 
-  /// 백엔드 [Recipe] → 기존 상세화면이 받는 [RecipeItem] 으로 변환 후 push.
-  /// 좋아요/스크랩 카운트는 chat 응답에 포함 안 되므로 0 으로 시작 (추후 백엔드 연동).
-  void _navigateToRecipeDetail(Recipe r) {
+  /// 채팅 SSE RecipeResponse에는 is_liked/is_scrapped/counts가 없으므로,
+  /// 단건 조회 API로 최신 상태를 가져온 뒤 상세 화면으로 이동한다.
+  Future<void> _navigateToRecipeDetail(Recipe r) async {
+    Recipe full;
+    try {
+      full = await NaengoApi.getRecipe(r.id);
+    } catch (_) {
+      full = r;
+    }
+    if (!mounted) return;
     final item = RecipeItem(
-      recipeId: r.id,
-      title: r.title,
-      description: r.description,
-      ingredientsRaw: r.ingredientsRaw,
-      ingredientsList: r.ingredients.map((i) {
+      recipeId: full.id,
+      title: full.title,
+      description: full.description,
+      ingredientsRaw: full.ingredientsRaw,
+      ingredientsList: full.ingredients.map((i) {
         final note = (i.note ?? '').trim();
         final base = '${i.name} ${i.amount}${i.unit}'.trim();
         return note.isEmpty ? base : '$base ($note)';
       }).toList(),
-      cookingSteps: r.instructions,
-      imageUrl: r.imageUrl,
-      videoUrl: r.videoUrl,
-      source: r.authorType == 'USER' ? 'USER' : 'STANDARD',
+      cookingSteps: full.instructions,
+      imageUrl: full.imageUrl,
+      videoUrl: full.videoUrl,
+      source: full.authorType == 'USER' ? 'USER' : 'STANDARD',
       status: 'APPROVED',
-      createdAt: DateTime.now(),
-      likesCount: 0,
-      scrapCount: 0,
+      createdAt: full.createdAt ?? DateTime.now(),
+      likesCount: full.likesCount,
+      scrapCount: full.scrapCount,
+      isLiked: full.isLiked,
+      isBookmarked: full.isScrapped,
     );
     Navigator.push(
       context,
