@@ -187,27 +187,36 @@ class NaengoApi {
   // ───────────────────────── 레시피 목록 API ─────────────────────────
 
   /// 레시피 목록 조회 (`GET /api/v1/recipes`).
-  static Future<List<Recipe>> getRecipes({
+  /// [cursor] 가 있으면 해당 커서 이후 항목을 반환 (cursor 기반 페이지네이션).
+  /// 반환값: `(items, nextCursor, hasNext)`
+  static Future<({List<Recipe> items, String? nextCursor, bool hasNext})>
+      getRecipes({
     String sort = 'latest',
     int limit = 20,
+    String? cursor,
   }) async {
-    final uri = Uri.parse('$baseUrl/api/v1/recipes').replace(
-      queryParameters: {
-        'sort': sort,
-        'limit': limit.toString(),
-      },
-    );
+    final params = <String, String>{
+      'sort': sort,
+      'limit': limit.toString(),
+      if (cursor != null) 'cursor': cursor,
+    };
+    final uri =
+        Uri.parse('$baseUrl/api/v1/recipes').replace(queryParameters: params);
     final r = await http.get(uri);
     if (r.statusCode != 200) {
       throw HttpException('getRecipes ${r.statusCode}: ${r.body}', uri: uri);
     }
     final decoded = jsonDecode(utf8.decode(r.bodyBytes));
-    final items = decoded is Map<String, dynamic>
-        ? decoded['items'] as List? ?? const []
-        : decoded as List? ?? const [];
-    return items
+    final map = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+    final rawItems = map['items'] as List? ?? (decoded is List ? decoded : []);
+    final items = rawItems
         .map((e) => Recipe.fromJson((e as Map).cast<String, dynamic>()))
         .toList(growable: false);
+    return (
+      items: items,
+      nextCursor: map['next_cursor'] as String?,
+      hasNext: map['has_next'] as bool? ?? false,
+    );
   }
 
   /// 레시피 단건 조회 (`GET /api/v1/recipes/{recipe_id}`).
@@ -223,21 +232,32 @@ class NaengoApi {
   }
 
   /// 내가 스크랩한 레시피 목록 (`GET /api/v1/users/me/scraps`).
-  static Future<List<Recipe>> getMyScraps({int limit = 20}) async {
-    final uri = Uri.parse('$baseUrl/api/v1/users/me/scraps').replace(
-      queryParameters: {'limit': limit.toString()},
-    );
+  static Future<({List<Recipe> items, String? nextCursor, bool hasNext})>
+      getMyScraps({
+    int limit = 20,
+    String? cursor,
+  }) async {
+    final params = <String, String>{
+      'limit': limit.toString(),
+      if (cursor != null) 'cursor': cursor,
+    };
+    final uri = Uri.parse('$baseUrl/api/v1/users/me/scraps')
+        .replace(queryParameters: params);
     final r = await http.get(uri);
     if (r.statusCode != 200) {
       throw HttpException('getMyScraps ${r.statusCode}: ${r.body}', uri: uri);
     }
     final decoded = jsonDecode(utf8.decode(r.bodyBytes));
-    final items = decoded is Map<String, dynamic>
-        ? decoded['items'] as List? ?? const []
-        : decoded as List? ?? const [];
-    return items
+    final map = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+    final rawItems = map['items'] as List? ?? (decoded is List ? decoded : []);
+    final items = rawItems
         .map((e) => Recipe.fromJson((e as Map).cast<String, dynamic>()))
         .toList(growable: false);
+    return (
+      items: items,
+      nextCursor: map['next_cursor']?.toString(),
+      hasNext: map['has_next'] as bool? ?? false,
+    );
   }
 
   static Future<Map<String, int>> setRecipeLike(

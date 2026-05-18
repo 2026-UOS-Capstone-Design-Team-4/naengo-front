@@ -3,12 +3,11 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
 import '../../data/mock_data_service.dart';
-import '../../models/recipe.dart';
+import '../shared/recipe_reaction.dart';
 import '../../models/recipe_item.dart';
 import '../../services/naengo_api_service.dart';
 import '../recipe_detail_screen/recipe_detail_screen.dart';
 import '../../widgets/naengo_snackbar.dart';
-export '../../models/recipe_item.dart';
 
 enum SortType { latest, mostLiked, bookmarked }
 enum _Tab { all, mine }
@@ -20,14 +19,20 @@ class RecipeBoardScreen extends StatefulWidget {
   State<RecipeBoardScreen> createState() => _RecipeBoardScreenState();
 }
 
-class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
+class _RecipeBoardScreenState extends State<RecipeBoardScreen>
+    with RecipeReactionMixin {
   bool _isSortDropdownOpen = false;
   SortType _currentSort = SortType.latest;
   _Tab _tab = _Tab.all;
 
   List<RecipeItem> _allRecipes = [];
   bool _isLoadingAll = false;
+  bool _isLoadingMore = false;
   String? _allLoadError;
+  String? _nextCursor;
+  bool _hasNext = false;
+  final ScrollController _scrollController = ScrollController();
+
   List<RecipeItem> _myRecipes = [];
   bool _isLoadingMine = false;
   String? _mineLoadError;
@@ -36,6 +41,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
   void initState() {
     super.initState();
     MockDataService.recipesNotifier.addListener(_onRecipesChanged);
+    _scrollController.addListener(_onScroll);
     _loadAllRecipes();
     _loadMyRecipes();
   }
@@ -43,7 +49,18 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
   @override
   void dispose() {
     MockDataService.recipesNotifier.removeListener(_onRecipesChanged);
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_tab != _Tab.all) return;
+    if (_isLoadingMore || !_hasNext) return;
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _loadMoreRecipes();
+    }
   }
 
   void _onRecipesChanged() {
@@ -62,17 +79,20 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
     setState(() {
       _isLoadingAll = true;
       _allLoadError = null;
+      _nextCursor = null;
+      _hasNext = false;
     });
     try {
-      final list = _currentSort == SortType.bookmarked
+      final result = _currentSort == SortType.bookmarked
           ? await NaengoApi.getMyScraps()
           : await NaengoApi.getRecipes(
               sort: _currentSort == SortType.mostLiked ? 'likes' : 'latest',
             );
-      final items = list.map(_recipeToItem).toList(growable: false);
       if (!mounted) return;
       setState(() {
-        _allRecipes = items;
+        _allRecipes = result.items.map(RecipeItem.fromRecipe).toList(growable: false);
+        _nextCursor = result.nextCursor;
+        _hasNext = result.hasNext;
         _isLoadingAll = false;
       });
     } catch (e, st) {
@@ -82,6 +102,33 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
         _allLoadError = '전체 레시피를 불러오지 못했어요.';
         _isLoadingAll = false;
       });
+    }
+  }
+
+  Future<void> _loadMoreRecipes() async {
+    if (_isLoadingMore || !_hasNext || _nextCursor == null) return;
+    setState(() => _isLoadingMore = true);
+    try {
+      final result = _currentSort == SortType.bookmarked
+          ? await NaengoApi.getMyScraps(cursor: _nextCursor)
+          : await NaengoApi.getRecipes(
+              sort: _currentSort == SortType.mostLiked ? 'likes' : 'latest',
+              cursor: _nextCursor,
+            );
+      if (!mounted) return;
+      setState(() {
+        _allRecipes = [
+          ..._allRecipes,
+          ...result.items.map(RecipeItem.fromRecipe),
+        ];
+        _nextCursor = result.nextCursor;
+        _hasNext = result.hasNext;
+        _isLoadingMore = false;
+      });
+    } catch (e, st) {
+      debugPrint('[RecipeBoard] loadMore 실패: $e\n$st');
+      if (!mounted) return;
+      setState(() => _isLoadingMore = false);
     }
   }
 
@@ -95,7 +142,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
       if (!mounted) return;
       setState(() {
         _myRecipes = list.map((j) {
-          return _pendingToRecipeItem(j);
+          return RecipeItem.fromPendingJson(j);
         }).toList();
         _isLoadingMine = false;
       });
@@ -109,72 +156,6 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
     }
   }
 
-  RecipeItem _recipeToItem(Recipe r) => RecipeItem(
-        recipeId: r.id,
-        title: r.title,
-        description: r.description,
-        ingredientsRaw: r.ingredientsRaw,
-        ingredientsList: r.ingredients
-            .map((e) => [e.name, e.amount, e.unit]
-                .where((part) => part.trim().isNotEmpty)
-                .join(' '))
-            .where((e) => e.trim().isNotEmpty)
-            .toList(growable: false),
-        cookingSteps: r.instructions,
-        imageUrl: r.imageUrl,
-        videoUrl: r.videoUrl,
-        source: r.authorType,
-        status: 'APPROVED',
-        createdAt: r.createdAt ?? DateTime.now(),
-        difficulty: r.difficulty,
-        cookingTime: r.cookingTime,
-        servings: r.servings,
-        calories: r.calories,
-        category: r.category,
-        likesCount: r.likesCount,
-        scrapCount: r.scrapCount,
-        isLiked: r.isLiked,
-        isBookmarked: r.isScrapped,
-        isOfficialRecipe: true,
-      );
-
-  RecipeItem _pendingToRecipeItem(Map<String, dynamic> j) => RecipeItem(
-        recipeId: j['pending_recipe_id'] as int,
-        title: j['title'] as String,
-        description: j['description'] as String?,
-        ingredientsRaw: j['ingredients_raw'] as String? ?? '',
-        ingredientsList: ((j['ingredients'] as List?) ?? const [])
-            .map((e) => ((e as Map)['name'] as String? ?? '').trim())
-            .where((e) => e.isNotEmpty)
-            .toList(growable: false),
-        cookingSteps: _pendingInstructions(j),
-        imageUrl: j['image_url'] as String?,
-        videoUrl: j['video_url'] as String?,
-        source: 'USER',
-        authorId: 1,
-        status: j['status'] as String? ?? 'PENDING',
-        createdAt: DateTime.parse(j['created_at'] as String),
-        difficulty: j['difficulty'] as String?,
-        cookingTime: j['cooking_time'] as int?,
-        servings: (j['servings'] as num?)?.toDouble(),
-        calories: j['calories'] as int?,
-        category: ((j['category'] as List?) ?? const [])
-            .map((e) => e as String)
-            .toList(growable: false),
-        isOfficialRecipe: false,
-      );
-
-  List<String> _pendingInstructions(Map<String, dynamic> j) {
-    final instructions = j['instructions'] as List?;
-    if (instructions != null) {
-      return instructions.map((e) => e as String).toList(growable: false);
-    }
-    return (j['content'] as String? ?? '')
-        .split('\n')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList(growable: false);
-  }
 
   List<RecipeItem> get _sortedRecipes {
     final list = List<RecipeItem>.from(_allRecipes);
@@ -203,7 +184,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
         recipe.status == 'APPROVED' &&
         recipe.isOfficialRecipe) {
       try {
-        detailRecipe = _recipeToItem(await NaengoApi.getRecipe(recipe.recipeId));
+        detailRecipe = RecipeItem.fromRecipe(await NaengoApi.getRecipe(recipe.recipeId));
       } catch (e) {
         debugPrint('[RecipeBoard] getRecipe 실패: $e');
       }
@@ -411,11 +392,18 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
     return RefreshIndicator(
       onRefresh: _loadAllRecipes,
       child: ListView.separated(
+        controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.symmetric(horizontal: 16.h, vertical: 12.h),
-        itemCount: recipes.length,
+        itemCount: recipes.length + (_isLoadingMore ? 1 : 0),
         separatorBuilder: (_, __) => SizedBox(height: 10.h),
         itemBuilder: (context, index) {
+          if (index == recipes.length) {
+            return Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.h),
+              child: const Center(child: CircularProgressIndicator()),
+            );
+          }
           final recipe = recipes[index];
           return GestureDetector(
             onTap: () => _navigateToDetail(recipe),
@@ -598,7 +586,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         GestureDetector(
-          onTap: () => _toggleLike(recipe),
+          onTap: () => toggleLike(recipe),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -620,7 +608,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
         ),
         SizedBox(width: 10.h),
         GestureDetector(
-          onTap: () => _toggleScrap(recipe),
+          onTap: () => toggleScrap(recipe),
           child: Icon(
             recipe.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
             color: recipe.isBookmarked ? appTheme.basis : appTheme.cloudy,
@@ -631,93 +619,6 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen> {
     );
   }
 
-  Future<void> _toggleLike(RecipeItem recipe) async {
-    final previousLiked = recipe.isLiked;
-    final previousLikes = recipe.likesCount;
-    final previousScraps = recipe.scrapCount;
-    final nextLiked = !recipe.isLiked;
-    setState(() {
-      recipe.isLiked = nextLiked;
-      recipe.likesCount += nextLiked ? 1 : -1;
-    });
-    if (_isLocalOnlyRecipe(recipe)) {
-      MockDataService.notifyLikesChanged();
-      return;
-    }
-    try {
-      final stats =
-          await NaengoApi.setRecipeLike(recipe.recipeId, liked: nextLiked);
-      if (!mounted) return;
-      setState(() {
-        recipe.likesCount = stats['likes_count'] ?? recipe.likesCount;
-        recipe.scrapCount = stats['scrap_count'] ?? recipe.scrapCount;
-      });
-      MockDataService.notifyLikesChanged();
-    } catch (e) {
-      if (await _syncRecipeFromServer(recipe)) {
-        return;
-      }
-      if (!mounted) return;
-      setState(() {
-        recipe.isLiked = previousLiked;
-        recipe.likesCount = previousLikes;
-        recipe.scrapCount = previousScraps;
-      });
-      NaengoSnackBar.show(context, '좋아요 변경에 실패했어요.');
-    }
-  }
-
-  Future<void> _toggleScrap(RecipeItem recipe) async {
-    final previousScrapped = recipe.isBookmarked;
-    final previousLikes = recipe.likesCount;
-    final previousScraps = recipe.scrapCount;
-    final nextScrapped = !recipe.isBookmarked;
-    setState(() {
-      recipe.isBookmarked = nextScrapped;
-      recipe.scrapCount += nextScrapped ? 1 : -1;
-    });
-    if (_isLocalOnlyRecipe(recipe)) return;
-    try {
-      final stats =
-          await NaengoApi.setRecipeScrap(recipe.recipeId, scrapped: nextScrapped);
-      if (!mounted) return;
-      setState(() {
-        recipe.likesCount = stats['likes_count'] ?? recipe.likesCount;
-        recipe.scrapCount = stats['scrap_count'] ?? recipe.scrapCount;
-      });
-    } catch (e) {
-      if (await _syncRecipeFromServer(recipe)) {
-        return;
-      }
-      if (!mounted) return;
-      setState(() {
-        recipe.isBookmarked = previousScrapped;
-        recipe.likesCount = previousLikes;
-        recipe.scrapCount = previousScraps;
-      });
-      NaengoSnackBar.show(context, '스크랩 변경에 실패했어요.');
-    }
-  }
-
-  Future<bool> _syncRecipeFromServer(RecipeItem recipe) async {
-    if (!recipe.isOfficialRecipe) return false;
-    try {
-      final fresh = await NaengoApi.getRecipe(recipe.recipeId);
-      if (!mounted) return true;
-      setState(() {
-        recipe.likesCount = fresh.likesCount;
-        recipe.scrapCount = fresh.scrapCount;
-        recipe.isLiked = fresh.isLiked;
-        recipe.isBookmarked = fresh.isScrapped;
-      });
-      return true;
-    } catch (e, st) {
-      debugPrint('[RecipeBoard] sync recipe reaction failed: $e\n$st');
-      return false;
-    }
-  }
-
-  bool _isLocalOnlyRecipe(RecipeItem recipe) => recipe.recipeId >= 9000;
 
   Future<void> _confirmDelete(RecipeItem recipe) async {
     final confirmed = await showDialog<bool>(

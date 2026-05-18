@@ -42,32 +42,23 @@ class MockRecipeService implements RecipeService {
   Future<RecipeItem> submitRecipe(RecipeSubmitRequest request) async {
     await Future.delayed(const Duration(milliseconds: 400)); // 네트워크 시뮬레이션
 
-    final recipe = RecipeItem(
-      recipeId: DateTime.now().millisecondsSinceEpoch,
-      title: request.title,
-      description: request.description,
-      ingredientsRaw: request.ingredientsRaw ?? '',
-      ingredientsList: request.ingredientsRaw
-              ?.split('\n')
-              .map((e) => e.trim())
-              .where((e) => e.isNotEmpty)
-              .toList() ??
-          [],
-      cookingSteps: request.content
-          .split('\n')
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList(),
-      source: 'USER',
-      authorId: MockDataService.currentUser.userId,
-      status: 'PENDING',
-      createdAt: DateTime.now(),
-      difficulty: request.difficulty,
-      cookingTime: request.cookingTime,
-      servings: request.servings,
-      calories: request.calories,
-      category: request.category,
-    );
+    final recipe = RecipeItem.fromPendingJson({
+      'pending_recipe_id': DateTime.now().millisecondsSinceEpoch,
+      'title': request.title,
+      'description': request.description,
+      'ingredients_raw': request.ingredientsRaw,
+      'content': request.content,
+      'image_url': null,
+      'video_url': null,
+      'user_id': MockDataService.currentUser.userId,
+      'status': 'PENDING',
+      'created_at': DateTime.now().toIso8601String(),
+      'difficulty': request.difficulty,
+      'cooking_time': request.cookingTime,
+      'servings': request.servings,
+      'calories': request.calories,
+      'category': request.category,
+    });
 
     MockDataService.addRecipe(recipe);
     return recipe;
@@ -90,32 +81,23 @@ class RealRecipeService implements RecipeService {
   @override
   Future<RecipeItem> submitRecipe(RecipeSubmitRequest request) async {
     final id = await NaengoApi.submitPendingRecipe(request.toJson());
-    final recipe = RecipeItem(
-      recipeId: id,
-      title: request.title,
-      description: request.description,
-      ingredientsRaw: request.ingredientsRaw ?? '',
-      ingredientsList: request.ingredientsRaw
-              ?.split('\n')
-              .map((e) => e.trim())
-              .where((e) => e.isNotEmpty)
-              .toList() ??
-          [],
-      cookingSteps: request.content
-          .split('\n')
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList(),
-      source: 'USER',
-      authorId: 1,
-      status: 'PENDING',
-      createdAt: DateTime.now(),
-      difficulty: request.difficulty,
-      cookingTime: request.cookingTime,
-      servings: request.servings,
-      calories: request.calories,
-      category: request.category,
-    );
+    final recipe = RecipeItem.fromPendingJson({
+      'pending_recipe_id': id,
+      'title': request.title,
+      'description': request.description,
+      'ingredients_raw': request.ingredientsRaw,
+      'content': request.content,
+      'image_url': null,
+      'video_url': null,
+      'user_id': 1,
+      'status': 'PENDING',
+      'created_at': DateTime.now().toIso8601String(),
+      'difficulty': request.difficulty,
+      'cooking_time': request.cookingTime,
+      'servings': request.servings,
+      'calories': request.calories,
+      'category': request.category,
+    });
     MockDataService.notifyRecipesChanged();
     return recipe;
   }
