@@ -58,12 +58,13 @@ class Recipe {
           .map((e) => IngredientItem.fromJson(e as Map<String, dynamic>))
           .toList(growable: false),
       ingredientsRaw: json['ingredients_raw'] as String? ?? '',
-      instructions: ((json['instructions'] as List?) ?? const [])
-          .map((e) => e as String)
+      instructions: ((json['steps'] as List?) ?? const [])
+          .map((e) => (e as Map<String, dynamic>)['instruction'] as String? ?? '')
+          .where((s) => s.isNotEmpty)
           .toList(growable: false),
       servings: (json['servings'] as num?)?.toDouble() ?? 0,
-      cookingTime: json['cooking_time'] as int? ?? 0,
-      calories: json['calories'] as int?,
+      cookingTime: json['cooking_time_minutes'] as int? ?? 0,
+      calories: json['kcal_per_serving'] as int?,
       difficulty: json['difficulty'] as String? ?? 'normal',
       category: ((json['category'] as List?) ?? const [])
           .map((e) => e as String)
