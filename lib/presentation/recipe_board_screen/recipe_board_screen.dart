@@ -157,27 +157,6 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
   }
 
 
-  List<RecipeItem> get _sortedRecipes {
-    final list = List<RecipeItem>.from(_allRecipes);
-    switch (_currentSort) {
-      case SortType.latest:
-        list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        break;
-      case SortType.mostLiked:
-        list.sort((a, b) => b.likesCount.compareTo(a.likesCount));
-        break;
-      case SortType.bookmarked:
-        list.sort((a, b) {
-          if (a.isBookmarked == b.isBookmarked) {
-            return b.createdAt.compareTo(a.createdAt);
-          }
-          return a.isBookmarked ? -1 : 1;
-        });
-        break;
-    }
-    return list;
-  }
-
   Future<void> _navigateToDetail(RecipeItem recipe) async {
     var detailRecipe = recipe;
     if (_tab == _Tab.all &&
@@ -376,7 +355,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
   }
 
   Widget _buildAllList() {
-    final recipes = _sortedRecipes;
+    final recipes = _allRecipes;
     if (_isLoadingAll && recipes.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
