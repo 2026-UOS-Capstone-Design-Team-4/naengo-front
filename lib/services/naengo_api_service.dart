@@ -9,6 +9,7 @@ import '../models/chat_message.dart';
 import '../models/chat_room.dart';
 import '../models/recipe.dart';
 import '../models/user.dart';
+import 'auth_service.dart';
 
 /// SSE 응답을 파싱한 이벤트 타입.
 sealed class ChatEvent {}
@@ -58,6 +59,14 @@ class NaengoApi {
     'NAENGO_API_BASE',
     defaultValue: 'http://43.201.62.254:8000',
   );
+
+  /// 인증이 필요한 API 호출에 쓸 헤더.
+  /// 로그인 상태면 Authorization 헤더가 자동으로 붙음.
+  static Map<String, String> _authHeaders() => {
+        'Content-Type': 'application/json',
+        if (AuthServiceLocator.instance.token != null)
+          'Authorization': 'Bearer ${AuthServiceLocator.instance.token}',
+      };
 
   /// 새 채팅방 생성 + 첫 메시지 (SSE 스트림).
   ///
@@ -146,7 +155,7 @@ class NaengoApi {
   /// 처리할 수 있게, 404 도 성공으로 swallow.
   static Future<void> deleteRoom(int roomId) async {
     final uri = Uri.parse('$baseUrl/api/v1/chat/rooms/$roomId');
-    final r = await http.delete(uri);
+    final r = await http.delete(uri, headers: _authHeaders());
     if (r.statusCode == 200 || r.statusCode == 404) return;
     throw HttpException(
       'deleteRoom ${r.statusCode}: ${r.body}',
@@ -243,7 +252,7 @@ class NaengoApi {
     };
     final uri = Uri.parse('$baseUrl/api/v1/users/me/scraps')
         .replace(queryParameters: params);
-    final r = await http.get(uri);
+    final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException('getMyScraps ${r.statusCode}: ${r.body}', uri: uri);
     }
@@ -286,7 +295,9 @@ class NaengoApi {
     required bool enabled,
   }) async {
     final uri = Uri.parse('$baseUrl/api/v1/recipes/$recipeId/$kind');
-    final r = enabled ? await http.post(uri) : await http.delete(uri);
+    final r = enabled
+        ? await http.post(uri, headers: _authHeaders())
+        : await http.delete(uri, headers: _authHeaders());
     if (r.statusCode < 200 || r.statusCode >= 300) {
       throw HttpException(
         '$kind ${enabled ? 'POST' : 'DELETE'} ${r.statusCode}: ${r.body}',
@@ -308,7 +319,7 @@ class NaengoApi {
     final uri = Uri.parse('$baseUrl/api/v1/pending-recipes');
     final r = await http.post(
       uri,
-      headers: {'Content-Type': 'application/json'},
+      headers: _authHeaders(),
       body: jsonEncode(body),
     );
     if (r.statusCode != 201) {
@@ -321,7 +332,7 @@ class NaengoApi {
   /// 내가 제출한 레시피 목록 (`GET /api/v1/pending-recipes`).
   static Future<List<Map<String, dynamic>>> getMyPendingRecipes() async {
     final uri = Uri.parse('$baseUrl/api/v1/pending-recipes');
-    final r = await http.get(uri);
+    final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException('getMyPendingRecipes ${r.statusCode}: ${r.body}', uri: uri);
     }
@@ -332,7 +343,7 @@ class NaengoApi {
   /// 제출한 레시피 삭제 (`DELETE /api/v1/pending-recipes/{id}`).
   static Future<void> deletePendingRecipe(int id) async {
     final uri = Uri.parse('$baseUrl/api/v1/pending-recipes/$id');
-    final r = await http.delete(uri);
+    final r = await http.delete(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException('deletePendingRecipe ${r.statusCode}: ${r.body}', uri: uri);
     }
@@ -343,7 +354,7 @@ class NaengoApi {
   /// 내 정보 조회 (`GET /api/v1/users/me`).
   static Future<AppUser> getMe() async {
     final uri = Uri.parse('$baseUrl/api/v1/users/me');
-    final r = await http.get(uri);
+    final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException('getMe ${r.statusCode}: ${r.body}', uri: uri);
     }
@@ -357,7 +368,7 @@ class NaengoApi {
     final uri = Uri.parse('$baseUrl/api/v1/users/me');
     final r = await http.patch(
       uri,
-      headers: {'Content-Type': 'application/json'},
+      headers: _authHeaders(),
       body: jsonEncode({'nickname': nickname}),
     );
     if (r.statusCode != 200) {
@@ -372,7 +383,7 @@ class NaengoApi {
   /// 프로필이 아직 없으면(404) 빈 배열 반환.
   static Future<List<String>> getProfileInput() async {
     final uri = Uri.parse('$baseUrl/api/v1/users/me/profile');
-    final r = await http.get(uri);
+    final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode == 404) return [];
     if (r.statusCode != 200) {
       throw HttpException('getProfileInput ${r.statusCode}: ${r.body}', uri: uri);
@@ -389,7 +400,7 @@ class NaengoApi {
     final uri = Uri.parse('$baseUrl/api/v1/users/me/profile');
     final r = await http.patch(
       uri,
-      headers: {'Content-Type': 'application/json'},
+      headers: _authHeaders(),
       body: jsonEncode({'user_input': inputs}),
     );
 

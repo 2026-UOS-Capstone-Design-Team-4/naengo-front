@@ -34,6 +34,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   Future<void> _loadData() async {
+    if (!_auth.isLoggedIn) {
+      // 로그아웃 상태면 API 호출 없이 바로 로그인 카드 표시
+      setState(() => _isLoading = false);
+      return;
+    }
     try {
       await _auth.load();
     } catch (_) {}
@@ -123,9 +128,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             child: const Text('취소'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // TODO: 카카오 인증 붙으면 로그아웃 로직 연결
+              await _auth.logout();
+              if (!mounted) return;
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                AppRoutes.mainShell,
+                (route) => false,
+              );
             },
             child: Text('로그아웃',
                 style: TextStyle(color: appTheme.mainUI)),
@@ -173,19 +183,75 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     : ListView(
                         padding: EdgeInsets.symmetric(
                             horizontal: 16.h, vertical: 8.h),
-                        children: [
-                          _buildProfileCard(
-                              user.nickname, user.profileImageUrl),
-                          SizedBox(height: 20.h),
-                          _buildPreferenceSection(),
-                          SizedBox(height: 20.h),
-                          _buildActionSection(),
-                        ],
+                        children: _auth.isLoggedIn
+                            ? [
+                                _buildProfileCard(
+                                    user.nickname, user.profileImageUrl),
+                                SizedBox(height: 20.h),
+                                _buildPreferenceSection(),
+                                SizedBox(height: 20.h),
+                                _buildActionSection(),
+                              ]
+                            : [
+                                _buildLoginCard(),
+                              ],
                       ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // ── 비로그인 카드 ────────────────────────────────────────
+
+  Widget _buildLoginCard() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 20.h, vertical: 16.h),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [appTheme.mainUI, appTheme.basis],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(16.h),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 24.h,
+            backgroundColor: Colors.white.withValues(alpha: 0.3),
+            child: Icon(Icons.person, color: Colors.white, size: 28.h),
+          ),
+          SizedBox(width: 16.h),
+          Expanded(
+            child: Text(
+              '로그인이 필요해요',
+              style: TextStyleHelper.instance.title18BoldNanumSquareAc
+                  .copyWith(color: Colors.white),
+            ),
+          ),
+          FilledButton(
+            onPressed: () {
+              // 로그인 구현 필요
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: appTheme.mainUI,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30.h),
+              ),
+              padding:
+                  EdgeInsets.symmetric(horizontal: 16.h, vertical: 8.h),
+            ),
+            child: Text(
+              '로그인',
+              style: TextStyleHelper.instance.body15BoldNanumSquareAc
+                  .copyWith(color: appTheme.mainUI),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -24,12 +24,24 @@ abstract class AuthService {
 
   /// 로그인 여부.
   bool get isLoggedIn;
+
+  /// 현재 JWT 액세스 토큰. 미로그인 시 null.
+  String? get token;
+
+  /// 이메일/비밀번호 로그인. 성공 시 사용자 정보 반환.
+  Future<AppUser> login(String email, String password);
+
+  /// 회원가입. 성공 시 사용자 정보 반환.
+  Future<AppUser> signup(String email, String password, String nickname);
+
+  /// 로그아웃 — 로컬 상태 초기화.
+  Future<void> logout();
 }
 
 /// 현재 앱 전역에서 사용할 AuthService 인스턴스.
 class AuthServiceLocator {
   AuthServiceLocator._();
-  static AuthService instance = RealAuthService();
+  static AuthService instance = MockAuthService();
 }
 
 // ─────────────────────────────────────────────────────────
@@ -38,6 +50,7 @@ class AuthServiceLocator {
 
 class RealAuthService implements AuthService {
   AppUser? _user;
+  String? _token;
   List<String> _userInput = [];
 
   @override
@@ -61,6 +74,21 @@ class RealAuthService implements AuthService {
   bool get isLoggedIn => _user != null;
 
   @override
+  String? get token => _token;
+
+  @override
+  Future<AppUser> login(String email, String password) async {
+    // TODO: POST /api/v1/auth/login → _token, _user 저장
+    throw UnimplementedError('로그인 미구현');
+  }
+
+  @override
+  Future<AppUser> signup(String email, String password, String nickname) async {
+    // TODO: POST /api/v1/auth/signup → _token, _user 저장
+    throw UnimplementedError('회원가입 미구현');
+  }
+
+  @override
   Future<void> load() async {
     _user = await NaengoApi.getMe();
     try {
@@ -79,6 +107,12 @@ class RealAuthService implements AuthService {
   Future<void> updateUserInput(List<String> inputs) async {
     _userInput = await NaengoApi.patchProfileInput(inputs);
   }
+
+  @override
+  Future<void> logout() async {
+    _user = null;
+    _userInput = [];
+  }
 }
 
 // ─────────────────────────────────────────────────────────
@@ -86,6 +120,8 @@ class RealAuthService implements AuthService {
 // ─────────────────────────────────────────────────────────
 
 class MockAuthService implements AuthService {
+  bool _loggedIn = true;
+
   @override
   AppUser get currentUser => MockDataService.currentUser;
 
@@ -93,7 +129,20 @@ class MockAuthService implements AuthService {
   UserProfile get currentProfile => MockDataService.currentProfile;
 
   @override
-  bool get isLoggedIn => true;
+  bool get isLoggedIn => _loggedIn;
+
+  @override
+  String? get token => null;
+
+  @override
+  Future<AppUser> login(String email, String password) async {
+    _loggedIn = true;
+    return MockDataService.currentUser;
+  }
+
+  @override
+  Future<AppUser> signup(String email, String password, String nickname) async =>
+      MockDataService.currentUser;
 
   @override
   Future<void> load() async {} // 즉시 완료
@@ -108,5 +157,10 @@ class MockAuthService implements AuthService {
   Future<void> updateNickname(String nickname) async {
     MockDataService.currentUser =
         MockDataService.currentUser.copyWith(nickname: nickname);
+  }
+
+  @override
+  Future<void> logout() async {
+    _loggedIn = false;
   }
 }

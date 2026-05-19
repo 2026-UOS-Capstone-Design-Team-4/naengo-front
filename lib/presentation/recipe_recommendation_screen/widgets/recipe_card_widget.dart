@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/app_export.dart';
 import '../../../data/mock_data_service.dart';
 import '../../../models/recipe_item.dart';
+import '../../../services/auth_service.dart';
+import '../../../widgets/naengo_snackbar.dart';
 
 class RecipeCardWidget extends StatefulWidget {
   final RecipeItem recipe;
@@ -30,6 +32,10 @@ class _RecipeCardWidgetState extends State<RecipeCardWidget> {
   void _onLikesChanged() => setState(() {});
 
   void _toggleLike() {
+    if (!AuthServiceLocator.instance.isLoggedIn) {
+      NaengoSnackBar.show(context, '로그인 후 이용할 수 있어요.');
+      return;
+    }
     widget.recipe.isLiked = !widget.recipe.isLiked;
     widget.recipe.likesCount += widget.recipe.isLiked ? 1 : -1;
     MockDataService.notifyLikesChanged();
@@ -108,11 +114,13 @@ class _RecipeCardWidgetState extends State<RecipeCardWidget> {
                     child: Row(
                       children: [
                         Icon(
-                          recipe.isLiked
+                          AuthServiceLocator.instance.isLoggedIn && recipe.isLiked
                               ? Icons.favorite
                               : Icons.favorite_border,
                           size: 10.h,
-                          color: appTheme.mainUI,
+                          color: AuthServiceLocator.instance.isLoggedIn
+                              ? appTheme.mainUI
+                              : appTheme.disabled,
                         ),
                         SizedBox(width: 2.h),
                         Text(

@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 
-import '../data/mock_data_service.dart';
-import '../models/recipe_item.dart';
-import '../services/naengo_api_service.dart';
-import '../widgets/naengo_snackbar.dart';
+import '../../data/mock_data_service.dart';
+import '../../models/recipe_item.dart';
+import '../../services/auth_service.dart';
+import '../../services/naengo_api_service.dart';
+import '../../widgets/naengo_snackbar.dart';
 
 /// 레시피 좋아요/스크랩 토글 로직을 공유
 ///
 /// [RecipeBoardScreen], [RecipeDetailScreen] 두 화면에서 공통으로 사용.
 mixin RecipeReactionMixin<T extends StatefulWidget> on State<T> {
   Future<void> toggleLike(RecipeItem recipe) async {
+    if (!AuthServiceLocator.instance.isLoggedIn) {
+      NaengoSnackBar.show(context, '로그인 후 이용할 수 있어요.');
+      return;
+    }
     if (!recipe.isOfficialRecipe) return;
     final prevLiked = recipe.isLiked;
     final prevLikes = recipe.likesCount;
@@ -45,6 +50,10 @@ mixin RecipeReactionMixin<T extends StatefulWidget> on State<T> {
   }
 
   Future<void> toggleScrap(RecipeItem recipe) async {
+    if (!AuthServiceLocator.instance.isLoggedIn) {
+      NaengoSnackBar.show(context, '로그인 후 이용할 수 있어요.');
+      return;
+    }
     if (!recipe.isOfficialRecipe) return;
     final prevScrapped = recipe.isBookmarked;
     final prevLikes = recipe.likesCount;
