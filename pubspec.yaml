@@ -21,6 +21,21 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/naengo_icon.png"
+
+flutter_native_splash:
+  color: "#FF6464"
+  image: assets/images/naengo_icon.png
+  color_dark: "#FF6464"
+  image_dark: assets/images/naengo_icon.png
+  android_12:
+    color: "#FF6464"
 flutter:
   uses-material-design: true
   assets:
