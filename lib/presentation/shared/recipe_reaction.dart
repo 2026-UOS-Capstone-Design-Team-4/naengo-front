@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../data/mock_data_service.dart';
-import '../models/recipe_item.dart';
-import '../services/naengo_api_service.dart';
-import '../widgets/naengo_snackbar.dart';
+import '../../data/mock_data_service.dart';
+import '../../models/recipe_item.dart';
+import '../../services/naengo_api_service.dart';
+import '../../widgets/naengo_snackbar.dart';
 
 /// 레시피 좋아요/스크랩 토글 로직을 공유
 ///

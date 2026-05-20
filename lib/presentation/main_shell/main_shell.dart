@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
@@ -15,15 +16,16 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell>
-    with TickerProviderStateMixin {
+class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
   _MainPage _currentPage = _MainPage.recommendation;
   bool _initialPageSet = false;
 
   late AnimationController _panelController;
-  late Animation<Offset> _panelSlide;
-  late Animation<double> _overlayFade;
   bool _isPanelOpen = false;
+
+  // 왼쪽 가장자리에서만 스와이프 열기 트리거되는 영역 너비
+  static const double _kEdgeDragWidth = 44.0;
+  bool _isEdgeDrag = false; 
 
   @override
   void didChangeDependencies() {
@@ -44,13 +46,6 @@ class _MainShellState extends State<MainShell>
       vsync: this,
       duration: const Duration(milliseconds: 320),
     );
-    _panelSlide = Tween<Offset>(
-      begin: const Offset(-1.0, 0.0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _panelController, curve: Curves.easeOutCubic));
-    _overlayFade = Tween<double>(begin: 0.0, end: 0.5).animate(
-      CurvedAnimation(parent: _panelController, curve: Curves.easeOut),
-    );
   }
 
   @override
@@ -61,14 +56,57 @@ class _MainShellState extends State<MainShell>
 
   void _openPanel() {
     setState(() => _isPanelOpen = true);
-    _panelController.forward();
+    _panelController.animateTo(
+      1.0,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   void _closePanel() {
-    _panelController.reverse().then((_) {
-      if (mounted) setState(() => _isPanelOpen = false);
-    });
+    _panelController
+        .animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic,
+        )
+        .then((_) {
+          if (mounted) setState(() => _isPanelOpen = false);
+        });
   }
+
+  // ── 제스처 핸들러 ──────────────────────────────────────────────────────────
+
+  void _onEdgeDragStart(DragStartDetails _) {
+    if (_isPanelOpen) return;
+    _isEdgeDrag = true;
+    setState(() => _isPanelOpen = true);
+    _panelController.value = 0.0;
+  }
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    final panelWidth = MediaQuery.of(context).size.width * 0.82;
+    final delta = details.delta.dx / panelWidth;
+    _panelController.value = (_panelController.value + delta).clamp(0.0, 1.0);
+  }
+
+  void _onDragEnd(DragEndDetails details) {
+    if (_isEdgeDrag) {
+      // 엣지에서 시작한 스와이프는 속도/위치 무관하게 항상 열기
+      _isEdgeDrag = false;
+      _openPanel();
+      return;
+    }
+    // 오버레이/패널에서의 드래그는 속도·위치 기반으로 닫기 판단
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity > 200 || (_panelController.value > 0.5 && velocity >= -200)) {
+      _openPanel();
+    } else {
+      _closePanel();
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
 
   void _goToRecommendation() {
     _closePanel();
@@ -100,11 +138,12 @@ class _MainShellState extends State<MainShell>
 
   @override
   Widget build(BuildContext context) {
+    final panelWidth = MediaQuery.of(context).size.width * 0.82;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: true,
       body: Container(
-        // 현재 페이지에 맞는 배경을 앱바 영역까지 확장
         decoration: _currentPage == _MainPage.recommendation
             ? BoxDecoration(
                 gradient: LinearGradient(
@@ -120,10 +159,10 @@ class _MainShellState extends State<MainShell>
             : BoxDecoration(color: appTheme.background),
         child: Stack(
           children: [
+            // ── 메인 콘텐츠 ────────────────────────────────────────────────
             SafeArea(
               child: Column(
                 children: [
-                  // ── 앱바 ───────────────────────────────────
                   NaengoAppBar(
                     leadingIcon: ImageConstant.imgSidebarButton,
                     onLeadingPressed: _openPanel,
@@ -132,7 +171,6 @@ class _MainShellState extends State<MainShell>
                     onActionPressed: () => Navigator.of(context)
                         .pushNamed(AppRoutes.profileSettingsScreen),
                   ),
-                  // ── 화면 콘텐츠 (슬라이드 없음) ────────────
                   Expanded(
                     child: IndexedStack(
                       index: _currentPage.index,
@@ -146,29 +184,57 @@ class _MainShellState extends State<MainShell>
               ),
             ),
 
-            // 딤 오버레이 — 탭하면 사이드바 닫힘 (회색 영역)
+            // ── 왼쪽 엣지 감지 영역 (항상 존재, 오버레이/패널 아래) ────────
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: _kEdgeDragWidth,
+              child: GestureDetector(
+                onHorizontalDragStart: _onEdgeDragStart,
+                onHorizontalDragUpdate: _onDragUpdate,
+                onHorizontalDragEnd: _onDragEnd,
+                dragStartBehavior: DragStartBehavior.down,
+                behavior: HitTestBehavior.translucent,
+              ),
+            ),
+
+            // ── 딤 오버레이 — 탭 또는 좌측 스와이프로 닫기 ──────────────
             if (_isPanelOpen)
               AnimatedBuilder(
-                animation: _overlayFade,
+                animation: _panelController,
                 builder: (context, _) => GestureDetector(
                   onTap: _closePanel,
+                  onHorizontalDragUpdate: _onDragUpdate,
+                  onHorizontalDragEnd: _onDragEnd,
                   child: Container(
-                    color: Colors.black.withValues(alpha: _overlayFade.value),
+                    color: Colors.black.withValues(
+                      alpha: _panelController.value * 0.5,
+                    ),
                   ),
                 ),
               ),
 
-            // 사이드바 패널 — 내부 탭은 닫히지 않도록 GestureDetector로 흡수
+            // ── 사이드바 패널 — 손가락과 함께 슬라이드 ───────────────────
             if (_isPanelOpen)
-              SlideTransition(
-                position: _panelSlide,
+              AnimatedBuilder(
+                animation: _panelController,
+                builder: (context, child) => Transform.translate(
+                  offset: Offset(
+                    (-1.0 + _panelController.value) * panelWidth,
+                    0,
+                  ),
+                  child: child,
+                ),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: GestureDetector(
-                    onTap: () {}, // 패널 내부 빈 공간 탭 흡수
+                    onTap: () {},
+                    onHorizontalDragUpdate: _onDragUpdate,
+                    onHorizontalDragEnd: _onDragEnd,
                     behavior: HitTestBehavior.opaque,
                     child: SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.82,
+                      width: panelWidth,
                       height: double.infinity,
                       child: ClipRRect(
                         borderRadius: const BorderRadius.only(
@@ -196,10 +262,10 @@ class _MainShellState extends State<MainShell>
                   ),
                 ),
               ),
+
           ],
         ),
       ),
     );
   }
-
 }
