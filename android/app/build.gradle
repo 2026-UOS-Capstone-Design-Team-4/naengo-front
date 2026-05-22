@@ -5,8 +5,14 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader -> localProperties.load(reader) }
+}
+
 android {
-    namespace = "com.example.app"
+    namespace = "com.naengo.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -19,17 +25,21 @@ android {
         jvmTarget = JavaVersion.VERSION_1_8
     }
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
-        applicationId = "com.example.app"
+        applicationId = "com.naengo.app"
         minSdk = flutter.minSdkVersion  // Kakao SDK 요구사항: API 21 이상
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled true
 
-        // 카카오 네이티브 앱 키 — AndroidManifest.xml의 ${kakaoAppKey} 치환.
-        // TODO: 아래 값을 카카오 개발자 콘솔의 '네이티브 앱 키'로 교체하세요.
-        manifestPlaceholders["kakaoAppKey"] = "35a8b7778fa89805211ca7812af35bd2"
+        def kakaoKey = localProperties.getProperty('kakao.nativeAppKey', '')
+        manifestPlaceholders["kakaoAppKey"] = kakaoKey
+        buildConfigField "String", "KAKAO_NATIVE_APP_KEY", "\"${kakaoKey}\""
     }
 
     buildTypes {

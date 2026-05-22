@@ -55,11 +55,11 @@
                 android:name="com.kakao.sdk.AppKey"
                 android:value="${kakaoAppKey}"/>
 
-        <!-- KakaoTalk 앱 로그인 콜백 처리 -->
+        <!-- 카카오 로그인 콜백 처리 (kakao_flutter_sdk 1.x) -->
         <activity
-                android:name="com.kakao.sdk.auth.AuthCodeHandlerActivity"
+                android:name="com.kakao.sdk.flutter.AuthCodeCustomTabsActivity"
                 android:exported="true">
-            <intent-filter>
+            <intent-filter android:label="flutter_web_auth">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>

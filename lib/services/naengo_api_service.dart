@@ -287,7 +287,7 @@ class NaengoApi {
       'limit': limit.toString(),
       if (cursor != null) 'cursor': cursor,
     };
-    final uri = Uri.parse('$baseUrl/api/v1/users/me/scraps')
+    final uri = Uri.parse('$springBase/api/v1/users/me/scraps')
         .replace(queryParameters: params);
     final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
@@ -354,7 +354,7 @@ class NaengoApi {
   /// 레시피 제출 (`POST /api/v1/user-recipes`). 반환값: user_recipe_id.
   /// API v5: /pending-recipes → /user-recipes, pending_recipe_id → user_recipe_id
   static Future<int> submitPendingRecipe(Map<String, dynamic> body) async {
-    final uri = Uri.parse('$baseUrl/api/v1/user-recipes');
+    final uri = Uri.parse('$springBase/api/v1/user-recipes');
     final r = await http.post(
       uri,
       headers: _authHeaders(),
@@ -370,7 +370,7 @@ class NaengoApi {
 
   /// 내가 제출한 레시피 목록 (`GET /api/v1/user-recipes`).
   static Future<List<Map<String, dynamic>>> getMyPendingRecipes() async {
-    final uri = Uri.parse('$baseUrl/api/v1/user-recipes');
+    final uri = Uri.parse('$springBase/api/v1/user-recipes');
     final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException('getMyPendingRecipes ${r.statusCode}: ${r.body}', uri: uri);
@@ -381,7 +381,7 @@ class NaengoApi {
 
   /// 제출한 레시피 삭제 (`DELETE /api/v1/user-recipes/{id}`).
   static Future<void> deletePendingRecipe(int id) async {
-    final uri = Uri.parse('$baseUrl/api/v1/user-recipes/$id');
+    final uri = Uri.parse('$springBase/api/v1/user-recipes/$id');
     final r = await http.delete(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException('deletePendingRecipe ${r.statusCode}: ${r.body}', uri: uri);
@@ -392,7 +392,7 @@ class NaengoApi {
 
   /// 내 정보 조회 (`GET /api/v1/users/me`).
   static Future<AppUser> getMe() async {
-    final uri = Uri.parse('$baseUrl/api/v1/users/me');
+    final uri = Uri.parse('$springBase/api/v1/users/me');
     final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException('getMe ${r.statusCode}: ${r.body}', uri: uri);
@@ -404,7 +404,7 @@ class NaengoApi {
 
   /// 닉네임 수정 (`PATCH /api/v1/users/me`).
   static Future<AppUser> patchNickname(String nickname) async {
-    final uri = Uri.parse('$baseUrl/api/v1/users/me');
+    final uri = Uri.parse('$springBase/api/v1/users/me');
     final r = await http.patch(
       uri,
       headers: _authHeaders(),
@@ -421,7 +421,7 @@ class NaengoApi {
   /// 내 프로필 조회 — user_input 배열만 반환 (`GET /api/v1/users/me/profile`).
   /// 프로필이 아직 없으면(404) 빈 배열 반환.
   static Future<List<String>> getProfileInput() async {
-    final uri = Uri.parse('$baseUrl/api/v1/users/me/profile');
+    final uri = Uri.parse('$springBase/api/v1/users/me/profile');
     final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode == 404) return [];
     if (r.statusCode != 200) {
@@ -436,7 +436,7 @@ class NaengoApi {
 
   /// 취향/알레르기 수정 (`PATCH /api/v1/users/me/profile`).
   static Future<List<String>> patchProfileInput(List<String> inputs) async {
-    final uri = Uri.parse('$baseUrl/api/v1/users/me/profile');
+    final uri = Uri.parse('$springBase/api/v1/users/me/profile');
     final r = await http.patch(
       uri,
       headers: _authHeaders(),

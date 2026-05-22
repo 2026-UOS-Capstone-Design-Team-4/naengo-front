@@ -10,15 +10,9 @@ var globalMessengerKey = GlobalKey<ScaffoldMessengerState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Kakao SDK 초기화 — 카카오 로그인 버튼을 쓰기 전에 반드시 먼저 실행.
-  // 네이티브 앱 키는 빌드 시 --dart-define=KAKAO_NATIVE_APP_KEY=xxx 로 주입.
-  // 네이티브 설정 필요: Android AndroidManifest.xml, iOS Info.plist 참고.
-  KakaoSdk.init(
-    nativeAppKey: const String.fromEnvironment(
-      'KAKAO_NATIVE_APP_KEY',
-      defaultValue: '',
-    ),
-  );
+  const configChannel = MethodChannel('com.naengo.app/config');
+  final kakaoKey = await configChannel.invokeMethod<String>('getKakaoNativeAppKey') ?? '';
+  KakaoSdk.init(nativeAppKey: kakaoKey);
 
   // RealAuthService로 교체. 토큰은 in-memory — 앱 재시작 시 재로그인 필요.
   AuthServiceLocator.instance = RealAuthService();
