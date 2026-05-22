@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import '../../core/app_export.dart';
+import '../../services/auth_service.dart';
 import '../shared/recipe_reaction.dart';
 import '../../models/recipe_item.dart';
 
@@ -165,10 +166,12 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
                       GestureDetector(
                         onTap: () => toggleLike(widget.recipe),
                         child: Icon(
-                          widget.recipe.isLiked
+                          AuthServiceLocator.instance.isLoggedIn && widget.recipe.isLiked
                               ? Icons.favorite
                               : Icons.favorite_border,
-                          color: appTheme.mainUI,
+                          color: AuthServiceLocator.instance.isLoggedIn
+                              ? appTheme.mainUI
+                              : appTheme.disabled,
                           size: 24.h,
                         ),
                       ),
@@ -176,10 +179,12 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen>
                       GestureDetector(
                         onTap: () => toggleScrap(widget.recipe),
                         child: Icon(
-                          widget.recipe.isBookmarked
+                          AuthServiceLocator.instance.isLoggedIn && widget.recipe.isBookmarked
                               ? Icons.bookmark
                               : Icons.bookmark_border,
-                          color: appTheme.mainUI,
+                          color: AuthServiceLocator.instance.isLoggedIn
+                              ? appTheme.mainUI
+                              : appTheme.disabled,
                           size: 24.h,
                         ),
                       ),

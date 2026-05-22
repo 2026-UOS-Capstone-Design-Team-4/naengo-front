@@ -34,6 +34,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   Future<void> _loadData() async {
+    if (!_auth.isLoggedIn) {
+      // 로그아웃 상태면 API 호출 없이 바로 로그인 카드 표시
+      setState(() => _isLoading = false);
+      return;
+    }
     try {
       await _auth.load();
     } catch (_) {}
@@ -114,18 +119,27 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   void _onLogout() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      // dialogContext로 명시해 screen의 context를 shadowing하지 않도록 함.
+      // 기존 코드는 dialog context로 Navigator.pushNamedAndRemoveUntil를 호출해
+      // pop 후 무효화된 context를 참조하는 버그가 있었음.
+      builder: (dialogContext) => AlertDialog(
         title: const Text('로그아웃'),
         content: const Text('로그아웃 하시겠어요?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('취소'),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO: 카카오 인증 붙으면 로그아웃 로직 연결
+            onPressed: () async {
+              Navigator.pop(dialogContext); // dialog 닫기
+              await _auth.logout();
+              if (!mounted) return;
+              // screen context로 navigate (dialog context는 이미 무효)
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                AppRoutes.mainShell,
+                (route) => false,
+              );
             },
             child: Text('로그아웃',
                 style: TextStyle(color: appTheme.mainUI)),
@@ -173,19 +187,77 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     : ListView(
                         padding: EdgeInsets.symmetric(
                             horizontal: 16.h, vertical: 8.h),
-                        children: [
-                          _buildProfileCard(
-                              user.nickname, user.profileImageUrl),
-                          SizedBox(height: 20.h),
-                          _buildPreferenceSection(),
-                          SizedBox(height: 20.h),
-                          _buildActionSection(),
-                        ],
+                        children: _auth.isLoggedIn
+                            ? [
+                                _buildProfileCard(
+                                    user.nickname, user.profileImageUrl),
+                                SizedBox(height: 20.h),
+                                _buildPreferenceSection(),
+                                SizedBox(height: 20.h),
+                                _buildActionSection(),
+                              ]
+                            : [
+                                _buildLoginCard(),
+                              ],
                       ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // ── 비로그인 카드 ────────────────────────────────────────
+
+  Widget _buildLoginCard() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 20.h, vertical: 16.h),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [appTheme.mainUI, appTheme.basis],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(16.h),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 24.h,
+            backgroundColor: Colors.white.withValues(alpha: 0.3),
+            child: Icon(Icons.person, color: Colors.white, size: 28.h),
+          ),
+          SizedBox(width: 16.h),
+          Expanded(
+            child: Text(
+              '로그인이 필요해요',
+              style: TextStyleHelper.instance.title18BoldNanumSquareAc
+                  .copyWith(color: Colors.white),
+            ),
+          ),
+          FilledButton(
+            onPressed: () async {
+              await Navigator.of(context).pushNamed(AppRoutes.loginScreen);
+              // 로그인 후 돌아오면 프로필 상태 새로고침
+              if (mounted) _loadData();
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: appTheme.mainUI,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30.h),
+              ),
+              padding:
+                  EdgeInsets.symmetric(horizontal: 16.h, vertical: 8.h),
+            ),
+            child: Text(
+              '로그인',
+              style: TextStyleHelper.instance.body15BoldNanumSquareAc
+                  .copyWith(color: appTheme.mainUI),
+            ),
+          ),
+        ],
       ),
     );
   }

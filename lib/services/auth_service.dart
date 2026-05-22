@@ -1,3 +1,5 @@
+import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
+
 import '../data/mock_data_service.dart';
 import '../models/user.dart';
 import '../models/user_profile.dart';
@@ -5,7 +7,7 @@ import 'naengo_api_service.dart';
 
 ///
 /// 프로필 화면은 이 인터페이스만 바라봄 →
-/// [MockAuthService] → [RealAuthService] → KakaoAuthService 교체 시 UI 코드 수정 불필요.
+/// [MockAuthService] → [RealAuthService] 교체 시 UI 코드 수정 불필요.
 abstract class AuthService {
   /// 현재 로그인된 사용자 기본 정보.
   AppUser get currentUser;
@@ -24,41 +26,117 @@ abstract class AuthService {
 
   /// 로그인 여부.
   bool get isLoggedIn;
+
+  /// 현재 JWT 액세스 토큰. 미로그인 시 null.
+  String? get token;
+
+  /// 카카오 소셜 로그인. 성공 시 사용자 정보 반환.
+  Future<AppUser> loginWithKakao();
+
+  /// 이메일/비밀번호 로그인 (LOCAL 계정 전용).
+  Future<AppUser> login(String email, String password);
+
+  /// 회원가입 (LOCAL 계정 전용).
+  Future<AppUser> signup(String email, String password, String nickname);
+
+  /// 로그아웃 — 서버 쿠키 만료 요청 + 로컬 상태 초기화.
+  Future<void> logout();
 }
 
 /// 현재 앱 전역에서 사용할 AuthService 인스턴스.
+/// main()에서 RealAuthService로 교체 및 토큰 복원 후 runApp() 호출.
 class AuthServiceLocator {
   AuthServiceLocator._();
-  static AuthService instance = RealAuthService();
+  static AuthService instance = MockAuthService();
 }
 
 // ─────────────────────────────────────────────────────────
-// Real 구현 — GET/PATCH /api/v1/users/me, /api/v1/users/me/profile
+// Real 구현 — 카카오 SDK + Spring API 서버
 // ─────────────────────────────────────────────────────────
 
 class RealAuthService implements AuthService {
   AppUser? _user;
+  String? _token;
   List<String> _userInput = [];
 
   @override
   AppUser get currentUser =>
       _user ??
       AppUser(
-        userId: 1,
+        userId: 0,
         email: '',
-        nickname: '...',
+        nickname: '게스트',
         createdAt: DateTime.now(),
       );
 
   @override
   UserProfile get currentProfile => UserProfile(
-        userId: _user?.userId ?? 1,
+        userId: _user?.userId ?? 0,
         userInput: _userInput,
         updatedAt: DateTime.now(),
       );
 
   @override
   bool get isLoggedIn => _user != null;
+
+  @override
+  String? get token => _token;
+
+  // ── 카카오 로그인 ───────────────────────────────────────
+
+  @override
+  Future<AppUser> loginWithKakao() async {
+    // 1. 카카오 SDK로 access token 획득
+    //    KakaoTalk 앱이 설치된 경우 앱 로그인, 없으면 웹 로그인으로 폴백.
+    OAuthToken oauthToken;
+    try {
+      if (await isKakaoTalkInstalled()) {
+        oauthToken = await UserApi.instance.loginWithKakaoTalk();
+      } else {
+        oauthToken = await UserApi.instance.loginWithKakaoAccount();
+      }
+    } catch (_) {
+      // KakaoTalk 로그인 실패 시 웹 계정 로그인으로 재시도
+      oauthToken = await UserApi.instance.loginWithKakaoAccount();
+    }
+
+    // 2. 카카오 access token을 우리 서버로 전달 → 자체 JWT 발급
+    final json = await NaengoApi.socialLoginKakao(oauthToken.accessToken);
+
+    // 3. JWT in-memory 저장 및 사용자 정보 설정
+    _token = json['access_token'] as String;
+
+    _user = AppUser.fromJson({
+      'user_id': json['user_id'],
+      'nickname': json['nickname'],
+      'role': json['role'] ?? 'USER',
+      'provider': 'KAKAO',
+      'is_active': true,
+    });
+
+    // 4. 프로필 로드 (실패해도 로그인은 유지)
+    try {
+      _userInput = await NaengoApi.getProfileInput();
+    } catch (_) {
+      _userInput = [];
+    }
+
+    return _user!;
+  }
+
+  // ── 이메일/비밀번호 로그인 (UI 없음, 확장 대비) ──────────
+
+  @override
+  Future<AppUser> login(String email, String password) async {
+    throw UnimplementedError('이메일/비밀번호 로그인은 현재 지원하지 않습니다.');
+  }
+
+  @override
+  Future<AppUser> signup(String email, String password, String nickname) async {
+    throw UnimplementedError('이메일/비밀번호 회원가입은 현재 지원하지 않습니다.');
+  }
+
+  // ── 데이터 로드/수정 ────────────────────────────────────
 
   @override
   Future<void> load() async {
@@ -79,13 +157,25 @@ class RealAuthService implements AuthService {
   Future<void> updateUserInput(List<String> inputs) async {
     _userInput = await NaengoApi.patchProfileInput(inputs);
   }
+
+  // ── 로그아웃 ────────────────────────────────────────────
+
+  @override
+  Future<void> logout() async {
+    await NaengoApi.postLogout(); // 서버에 로그아웃 알림 (멱등)
+    _user = null;
+    _token = null;
+    _userInput = [];
+  }
 }
 
 // ─────────────────────────────────────────────────────────
-// Mock 구현 — 카카오 인증 전까지 사용 (필요 시 교체)
+// Mock 구현 — 실제 서버 없이 UI 개발/테스트 용
 // ─────────────────────────────────────────────────────────
 
 class MockAuthService implements AuthService {
+  bool _loggedIn = false;
+
   @override
   AppUser get currentUser => MockDataService.currentUser;
 
@@ -93,10 +183,29 @@ class MockAuthService implements AuthService {
   UserProfile get currentProfile => MockDataService.currentProfile;
 
   @override
-  bool get isLoggedIn => true;
+  bool get isLoggedIn => _loggedIn;
 
   @override
-  Future<void> load() async {} // 즉시 완료
+  String? get token => null;
+
+  @override
+  Future<AppUser> loginWithKakao() async {
+    _loggedIn = true;
+    return MockDataService.currentUser;
+  }
+
+  @override
+  Future<AppUser> login(String email, String password) async {
+    _loggedIn = true;
+    return MockDataService.currentUser;
+  }
+
+  @override
+  Future<AppUser> signup(String email, String password, String nickname) async =>
+      MockDataService.currentUser;
+
+  @override
+  Future<void> load() async {}
 
   @override
   Future<void> updateUserInput(List<String> inputs) async {
@@ -108,5 +217,10 @@ class MockAuthService implements AuthService {
   Future<void> updateNickname(String nickname) async {
     MockDataService.currentUser =
         MockDataService.currentUser.copyWith(nickname: nickname);
+  }
+
+  @override
+  Future<void> logout() async {
+    _loggedIn = false;
   }
 }

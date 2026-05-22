@@ -49,6 +49,23 @@
         <meta-data
                 android:name="flutterEmbedding"
                 android:value="2"/>
+
+        <!-- 카카오 네이티브 앱 키 -->
+        <meta-data
+                android:name="com.kakao.sdk.AppKey"
+                android:value="${kakaoAppKey}"/>
+
+        <!-- KakaoTalk 앱 로그인 콜백 처리 -->
+        <activity
+                android:name="com.kakao.sdk.auth.AuthCodeHandlerActivity"
+                android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="kakao${kakaoAppKey}" android:host="oauth"/>
+            </intent-filter>
+        </activity>
     </application>
     <queries>
         <intent>

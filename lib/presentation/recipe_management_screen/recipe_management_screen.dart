@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_export.dart';
 import '../../data/mock_data_service.dart';
 import '../../models/chat_room.dart';
+import '../../services/auth_service.dart';
 import '../../services/naengo_api_service.dart';
 import '../../widgets/custom_image_view.dart';
 import '../../widgets/naengo_snackbar.dart';
@@ -31,6 +32,7 @@ class RecipeManagementScreen extends StatefulWidget {
 
 class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
   bool _isChatExpanded = false;
+  bool get _isLoggedIn => AuthServiceLocator.instance.isLoggedIn;
 
   /// 백엔드에서 채팅방 목록을 fetching 중인지.
   bool _isLoadingRooms = false;
@@ -48,6 +50,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
   /// 백엔드에서 채팅방 목록을 새로 받아와 `MockDataService` cache 갱신.
   /// 실패해도 앱 죽이지 않고 기존 cache 그대로 보여줌 + 작은 에러 안내.
   Future<void> _refreshRoomsFromServer() async {
+    if (!_isLoggedIn) return; // 비로그인 시 서버 동기화 불필요
     setState(() {
       _isLoadingRooms = true;
       _loadError = null;
@@ -217,9 +220,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
               title: '새 채팅',
               isActive: _isActive(AppRoutes.recipeRecommendationScreen),
               onTap: () {
-                if (widget.onNavigateToRecommendation != null) {
-                  widget.onNavigateToRecommendation!();
-                }
+                widget.onNavigateToRecommendation?.call();
               },
             ),
             SizedBox(height: 8.h),
@@ -227,17 +228,14 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
               iconPath: ImageConstant.imgRed50024x24,
               title: '레시피 게시판',
               isActive: _isActive(AppRoutes.recipeBoardScreen),
-              onTap: () {
-                if (widget.onNavigateToBoard != null) {
-                  widget.onNavigateToBoard!();
-                }
-              },
+              onTap: () => widget.onNavigateToBoard?.call(),
             ),
             SizedBox(height: 8.h),
             _buildMenuItem(
               iconPath: ImageConstant.imgPencilSharp,
               title: '레시피 작성하기',
               isActive: false,
+              disabled: !_isLoggedIn,
               onTap: () async {
                 widget.onClose?.call();
                 final submitted = await Navigator.pushNamed(
@@ -251,8 +249,12 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
               },
             ),
             SizedBox(height: 8.h),
-            _buildChatHeader(),
-            if (_isChatExpanded) Expanded(child: _buildChatList()),
+            if (_isLoggedIn) ...[
+              _buildChatHeader(),
+              if (_isChatExpanded) Expanded(child: _buildChatList()),
+            ] else ...[
+              _buildCurrentChatSection(),
+            ],
           ],
         ),
       ),
@@ -284,9 +286,10 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
     required String title,
     required bool isActive,
     required VoidCallback onTap,
+    bool disabled = false,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: disabled ? null : onTap,
       child: Container(
         margin: EdgeInsets.only(
           left: isActive ? 0 : 12.h,
@@ -313,13 +316,78 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
               imagePath: iconPath,
               width: 24.h,
               height: 24.h,
-              color: isActive ? Colors.white : null,
+              color: disabled
+                  ? appTheme.disabled
+                  : (isActive ? Colors.white : null),
             ),
             SizedBox(width: 10.h),
             Text(
               title,
               style: TextStyleHelper.instance.title18BoldNanumSquareAc.copyWith(
-                color: isActive ? Colors.white : appTheme.text,
+                color: disabled
+                    ? appTheme.disabled
+                    : (isActive ? Colors.white : appTheme.text),
+              ),
+            ),
+            if (disabled) ...[
+              SizedBox(width: 6.h),
+              Icon(Icons.lock_outline, size: 14.h, color: appTheme.disabled),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 비로그인 전용 — 현재 채팅방 1개만 표시
+  Widget _buildCurrentChatSection() {
+    final rooms = MockDataService.chatRooms;
+    if (rooms.isEmpty) return const SizedBox.shrink();
+
+    final current = rooms.firstWhere(
+      (r) => r.roomId == widget.currentRoomId,
+      orElse: () => rooms.first,
+    );
+    final isCurrent = current.roomId == widget.currentRoomId;
+
+    return GestureDetector(
+      onTap: isCurrent ? null : () => _openRoom(current),
+      child: Container(
+        margin: EdgeInsets.only(
+          left: isCurrent ? 0 : 12.h,
+          right: 50.h,
+        ),
+        padding: EdgeInsets.only(
+          left: isCurrent ? 26.h : 14.h,
+          right: 14.h,
+          top: 12.h,
+          bottom: 12.h,
+        ),
+        decoration: BoxDecoration(
+          color: isCurrent ? appTheme.mainUI : Colors.transparent,
+          borderRadius: isCurrent
+              ? BorderRadius.only(
+                  topRight: Radius.circular(14.h),
+                  bottomRight: Radius.circular(14.h),
+                )
+              : BorderRadius.zero,
+        ),
+        child: Row(
+          children: [
+            CustomImageView(
+              imagePath: ImageConstant.img24x24,
+              width: 24.h,
+              height: 24.h,
+              color: isCurrent ? Colors.white : null,
+            ),
+            SizedBox(width: 10.h),
+            Expanded(
+              child: Text(
+                '현재 채팅: ${current.title}',
+                style: TextStyleHelper.instance.title18BoldNanumSquareAc
+                    .copyWith(color: isCurrent ? Colors.white : appTheme.text),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

@@ -5,6 +5,7 @@ import '../../core/app_export.dart';
 import '../../data/mock_data_service.dart';
 import '../shared/recipe_reaction.dart';
 import '../../models/recipe_item.dart';
+import '../../services/auth_service.dart';
 import '../../services/naengo_api_service.dart';
 import '../recipe_detail_screen/recipe_detail_screen.dart';
 import '../../widgets/naengo_snackbar.dart';
@@ -168,6 +169,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
         debugPrint('[RecipeBoard] getRecipe 실패: $e');
       }
     }
+    if (!mounted) return;
     await Navigator.push(
       context,
       PageRouteBuilder(
@@ -561,6 +563,9 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
   }
 
   Widget _buildLikeBookmarkRow(RecipeItem recipe) {
+    final loggedIn = AuthServiceLocator.instance.isLoggedIn;
+    final liked = loggedIn && recipe.isLiked;
+    final bookmarked = loggedIn && recipe.isBookmarked;
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
@@ -570,8 +575,8 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                recipe.isLiked ? Icons.favorite : Icons.favorite_border,
-                color: recipe.isLiked ? appTheme.basis : appTheme.cloudy,
+                liked ? Icons.favorite : Icons.favorite_border,
+                color: liked ? appTheme.basis : appTheme.disabled,
                 size: 22.h,
               ),
               SizedBox(width: 3.h),
@@ -579,7 +584,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
                 '${recipe.likesCount}',
                 style: TextStyle(
                   fontSize: 12.fSize,
-                  color: recipe.isLiked ? appTheme.basis : appTheme.cloudy,
+                  color: liked ? appTheme.basis : appTheme.disabled,
                 ),
               ),
             ],
@@ -589,8 +594,8 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
         GestureDetector(
           onTap: () => toggleScrap(recipe),
           child: Icon(
-            recipe.isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-            color: recipe.isBookmarked ? appTheme.basis : appTheme.cloudy,
+            bookmarked ? Icons.bookmark : Icons.bookmark_border,
+            color: bookmarked ? appTheme.basis : appTheme.disabled,
             size: 22.h,
           ),
         ),

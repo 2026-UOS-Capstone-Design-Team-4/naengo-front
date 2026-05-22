@@ -10,6 +10,7 @@ import '../../models/chat_room.dart';
 import '../../models/recipe.dart';
 import '../../models/recipe_item.dart';
 import '../../services/camera_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/naengo_api_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_image_view.dart';
@@ -246,6 +247,11 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
             event.roomId,
           );
           _currentRoom = _currentRoom.copyWith(serverRoomId: event.roomId);
+          // 비로그인: 첫 메시지 전송 시 이전 채팅방 제거 → 현재 방만 남김
+          if (!AuthServiceLocator.instance.isLoggedIn) {
+            MockDataService.chatRooms
+                .removeWhere((r) => r.roomId != _currentRoom.roomId);
+          }
         } else if (event is MessageChunk) {
           // 첫 청크 도착 → 로딩 인디케이터 끄고 AI 버블 노출
           if (firstChunk) {
