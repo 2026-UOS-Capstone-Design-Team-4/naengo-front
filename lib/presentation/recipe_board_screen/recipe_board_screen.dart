@@ -169,6 +169,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
         debugPrint('[RecipeBoard] getRecipe 실패: $e');
       }
     }
+    if (!mounted) return;
     await Navigator.push(
       context,
       PageRouteBuilder(

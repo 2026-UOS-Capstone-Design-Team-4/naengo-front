@@ -119,19 +119,23 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   void _onLogout() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      // dialogContext로 명시해 screen의 context를 shadowing하지 않도록 함.
+      // 기존 코드는 dialog context로 Navigator.pushNamedAndRemoveUntil를 호출해
+      // pop 후 무효화된 context를 참조하는 버그가 있었음.
+      builder: (dialogContext) => AlertDialog(
         title: const Text('로그아웃'),
         content: const Text('로그아웃 하시겠어요?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('취소'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext); // dialog 닫기
               await _auth.logout();
               if (!mounted) return;
+              // screen context로 navigate (dialog context는 이미 무효)
               Navigator.of(context).pushNamedAndRemoveUntil(
                 AppRoutes.mainShell,
                 (route) => false,
@@ -233,8 +237,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             ),
           ),
           FilledButton(
-            onPressed: () {
-              // 로그인 구현 필요
+            onPressed: () async {
+              await Navigator.of(context).pushNamed(AppRoutes.loginScreen);
+              // 로그인 후 돌아오면 프로필 상태 새로고침
+              if (mounted) _loadData();
             },
             style: FilledButton.styleFrom(
               backgroundColor: Colors.white,

@@ -43,7 +43,7 @@ class MockRecipeService implements RecipeService {
     await Future.delayed(const Duration(milliseconds: 400)); // 네트워크 시뮬레이션
 
     final recipe = RecipeItem.fromPendingJson({
-      'pending_recipe_id': DateTime.now().millisecondsSinceEpoch,
+      'user_recipe_id': DateTime.now().millisecondsSinceEpoch,
       'title': request.title,
       'description': request.description,
       'ingredients_raw': request.ingredientsRaw,
@@ -82,7 +82,7 @@ class RealRecipeService implements RecipeService {
   Future<RecipeItem> submitRecipe(RecipeSubmitRequest request) async {
     final id = await NaengoApi.submitPendingRecipe(request.toJson());
     final recipe = RecipeItem.fromPendingJson({
-      'pending_recipe_id': id,
+      'user_recipe_id': id,
       'title': request.title,
       'description': request.description,
       'ingredients_raw': request.ingredientsRaw,

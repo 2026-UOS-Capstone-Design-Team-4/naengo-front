@@ -86,9 +86,10 @@ class RecipeItem {
         isOfficialRecipe: true,
       );
 
-  /// 대기 중인 레시피 API 응답(JSON)으로부터 생성.
+  /// 유저 제출 레시피 API 응답(JSON)으로부터 생성.
+  /// API v5: user_recipe_id (이전: pending_recipe_id) — 두 키 모두 허용.
   factory RecipeItem.fromPendingJson(Map<String, dynamic> j) => RecipeItem(
-        recipeId: j['pending_recipe_id'] as int,
+        recipeId: j['user_recipe_id'] as int? ?? j['pending_recipe_id'] as int,
         title: j['title'] as String,
         description: j['description'] as String?,
         ingredientsRaw: j['ingredients_raw'] as String? ?? '',

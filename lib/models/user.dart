@@ -25,7 +25,8 @@ class AppUser {
 
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
         userId: j['user_id'] as int,
-        email: j['email'] as String,
+        // API v5: email → username. 두 키 모두 허용 (하위 호환)
+        email: j['username'] as String? ?? j['email'] as String? ?? '',
         nickname: j['nickname'] as String,
         role: j['role'] as String? ?? 'USER',
         isActive: j['is_active'] as bool? ?? true,
@@ -33,7 +34,10 @@ class AppUser {
         provider: j['provider'] as String? ?? 'LOCAL',
         providerId: j['provider_id'] as String?,
         profileImageUrl: j['profile_image_url'] as String?,
-        createdAt: DateTime.parse(j['created_at'] as String),
+        // auth 응답(signup/login)에는 created_at이 없으므로 null-safe 처리
+        createdAt: j['created_at'] != null
+            ? DateTime.parse(j['created_at'] as String)
+            : DateTime.now(),
       );
 
   AppUser copyWith({String? nickname, String? profileImageUrl}) => AppUser(

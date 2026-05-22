@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../presentation/login_screen/login_screen.dart';
 import '../presentation/main_shell/main_shell.dart';
 import '../presentation/recipe_recommendation_screen/recipe_recommendation_screen.dart';
 import '../presentation/chat_interface_screen/chat_interface_screen.dart';
@@ -9,6 +10,7 @@ import '../presentation/recipe_write_screen/recipe_write_screen.dart';
 
 class AppRoutes {
   static const String mainShell = '/';
+  static const String loginScreen = '/login';
   static const String recipeRecommendationScreen = '/recipe_recommendation_screen';
   static const String chatInterfaceScreen = '/chat_interface_screen';
   static const String recipeManagementScreen = '/recipe_management_screen';
@@ -41,8 +43,21 @@ class AppRoutes {
       case recipeWriteScreen:
         page = const RecipeWriteScreen();
         break;
+      case loginScreen:
+        page = const LoginScreen();
+        break;
       default:
         page = const MainShell();
+    }
+
+    // 로그인 화면: 애니메이션 없이 즉시 표시
+    if (settings.name == loginScreen) {
+      return PageRouteBuilder(
+        settings: settings,
+        pageBuilder: (_, __, ___) => page,
+        transitionsBuilder: (_, __, ___, child) => child,
+        transitionDuration: Duration.zero,
+      );
     }
 
     // ChatInterface: 아래에서 위로 슬라이드
