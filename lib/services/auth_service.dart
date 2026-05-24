@@ -155,7 +155,16 @@ class RealAuthService implements AuthService {
 
   @override
   Future<void> updateUserInput(List<String> inputs) async {
-    _userInput = await NaengoApi.patchProfileInput(inputs);
+    final toDelete = _userInput.where((s) => !inputs.contains(s)).toList();
+    final toAdd = inputs.where((s) => !_userInput.contains(s)).toList();
+    List<String> latest = _userInput;
+    for (final text in toDelete) {
+      latest = await NaengoApi.deleteProfileInput(text);
+    }
+    for (final text in toAdd) {
+      latest = await NaengoApi.appendProfileInput(text);
+    }
+    _userInput = latest;
   }
 
   // ── 로그아웃 ────────────────────────────────────────────

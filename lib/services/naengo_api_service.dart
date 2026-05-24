@@ -41,7 +41,7 @@ class ChatStreamError extends ChatEvent {
 /// Naengo (냉고) 백엔드 채팅 API 클라이언트.
 ///
 /// 베이스 URL 은 dart-define 으로 주입 가능:
-///   flutter run --dart-define=NAENGO_API_BASE=http://43.201.62.254:8000
+///   flutter run --dart-define=NAENGO_API_BASE=http://your-api-server:8000
 ///
 /// 두 가지 엔드포인트 모두 **SSE (Server-Sent Events)** 스트림으로 응답:
 ///   POST /api/v1/chat/rooms          — 새 방 + 첫 메시지
@@ -57,17 +57,14 @@ class NaengoApi {
   /// AI 서버 URL (채팅 SSE). `--dart-define=NAENGO_API_BASE=...` 로 변경 가능.
   static const String baseUrl = String.fromEnvironment(
     'NAENGO_API_BASE',
-    defaultValue: 'http://43.201.62.254:8000',
+    defaultValue: '',
   );
 
   /// Spring API 서버 URL (인증·사용자·레시피). `--dart-define=NAENGO_SPRING_BASE=...` 로 변경 가능.
-  /// 설정하지 않으면 baseUrl 과 동일하게 동작.
-  static const String _springBaseEnv = String.fromEnvironment(
+  static const String springBase = String.fromEnvironment(
     'NAENGO_SPRING_BASE',
     defaultValue: '',
   );
-  static String get springBase =>
-      _springBaseEnv.isNotEmpty ? _springBaseEnv : 'http://naengo-api-server-alb-176175450.ap-northeast-2.elb.amazonaws.com';
 
   /// 카카오 소셜 로그인 (`POST /api/v1/auth/social/kakao`).
   /// [kakaoAccessToken]: 카카오 SDK에서 받은 access_token.
@@ -128,6 +125,25 @@ class NaengoApi {
     return _streamChat(uri, prompt: prompt, imageDataUrl: imageDataUrl);
   }
 
+  /// 게스트 채팅 (SSE 스트림). 비로그인 사용자 전용.
+  ///
+  /// 서버에 저장되지 않으며, 이전 대화 이력([history])을 매 요청마다 클라이언트가 전달.
+  /// [history] 항목은 `{"role": "user"|"model", "content": "..."}` 형식. 최대 20개.
+  /// 응답에 `room` 이벤트 없음 — [RoomCreated] 가 yield 되지 않음.
+  static Stream<ChatEvent> guestChat({
+    required String prompt,
+    String? imageDataUrl,
+    List<Map<String, String>> history = const [],
+  }) {
+    final uri = Uri.parse('$baseUrl/api/v1/guest/chat');
+    return _streamChat(
+      uri,
+      prompt: prompt,
+      imageDataUrl: imageDataUrl,
+      history: history,
+    );
+  }
+
   /// File → `data:image/jpeg;base64,...` 형식 data URL 로 변환.
   ///
   /// 백엔드 ChatRequest.image 가 정확히 이 포맷을 받음.
@@ -150,7 +166,7 @@ class NaengoApi {
   /// `serverRoomId` 에 백엔드 정수 ID 가 그대로 들어있음.
   static Future<List<ChatRoom>> listRooms() async {
     final uri = Uri.parse('$baseUrl/api/v1/chat/rooms');
-    final r = await http.get(uri);
+    final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException(
         'listRooms ${r.statusCode}: ${r.body}',
@@ -171,7 +187,7 @@ class NaengoApi {
   ///    (현재 v1 제약, 추후 백엔드가 image_url 컬럼 추가하면 매핑 가능).
   static Future<List<ChatMessage>> getRoomHistory(int roomId) async {
     final uri = Uri.parse('$baseUrl/api/v1/chat/rooms/$roomId');
-    final r = await http.get(uri);
+    final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException(
         'getRoomHistory ${r.statusCode}: ${r.body}',
@@ -277,7 +293,7 @@ class NaengoApi {
     );
   }
 
-  /// 내가 스크랩한 레시피 목록 (`GET /api/v1/users/me/scraps`).
+  /// 내가 스크랩한 레시피 목록 (`GET /api/v1/recipes/scraps`).
   static Future<({List<Recipe> items, String? nextCursor, bool hasNext})>
       getMyScraps({
     int limit = 20,
@@ -287,7 +303,7 @@ class NaengoApi {
       'limit': limit.toString(),
       if (cursor != null) 'cursor': cursor,
     };
-    final uri = Uri.parse('$springBase/api/v1/users/me/scraps')
+    final uri = Uri.parse('$baseUrl/api/v1/recipes/scraps')
         .replace(queryParameters: params);
     final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
@@ -351,26 +367,28 @@ class NaengoApi {
 
   // ───────────────────────── 레시피 제출 API ─────────────────────────
 
-  /// 레시피 제출 (`POST /api/v1/user-recipes`). 반환값: user_recipe_id.
-  /// API v5: /pending-recipes → /user-recipes, pending_recipe_id → user_recipe_id
-  static Future<int> submitPendingRecipe(Map<String, dynamic> body) async {
-    final uri = Uri.parse('$springBase/api/v1/user-recipes');
-    final r = await http.post(
-      uri,
-      headers: _authHeaders(),
-      body: jsonEncode(body),
-    );
+  /// 레시피 제출 (`POST /api/v1/user-recipes`, multipart/form-data).
+  /// [payload]: 레시피 데이터 Map — `payload` 필드에 JSON 문자열로 전송.
+  static Future<int> submitPendingRecipe(Map<String, dynamic> payload) async {
+    final uri = Uri.parse('$baseUrl/api/v1/user-recipes');
+    final request = http.MultipartRequest('POST', uri);
+    if (AuthServiceLocator.instance.token != null) {
+      request.headers['Authorization'] =
+          'Bearer ${AuthServiceLocator.instance.token}';
+    }
+    request.fields['payload'] = jsonEncode(payload);
+    final streamed = await request.send();
+    final r = await http.Response.fromStream(streamed);
     if (r.statusCode != 201) {
       throw HttpException('submitPendingRecipe ${r.statusCode}: ${r.body}', uri: uri);
     }
     final json = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
-    // API v5: user_recipe_id (이전: pending_recipe_id)
     return json['user_recipe_id'] as int? ?? json['pending_recipe_id'] as int;
   }
 
   /// 내가 제출한 레시피 목록 (`GET /api/v1/user-recipes`).
   static Future<List<Map<String, dynamic>>> getMyPendingRecipes() async {
-    final uri = Uri.parse('$springBase/api/v1/user-recipes');
+    final uri = Uri.parse('$baseUrl/api/v1/user-recipes');
     final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException('getMyPendingRecipes ${r.statusCode}: ${r.body}', uri: uri);
@@ -381,7 +399,7 @@ class NaengoApi {
 
   /// 제출한 레시피 삭제 (`DELETE /api/v1/user-recipes/{id}`).
   static Future<void> deletePendingRecipe(int id) async {
-    final uri = Uri.parse('$springBase/api/v1/user-recipes/$id');
+    final uri = Uri.parse('$baseUrl/api/v1/user-recipes/$id');
     final r = await http.delete(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException('deletePendingRecipe ${r.statusCode}: ${r.body}', uri: uri);
@@ -434,20 +452,36 @@ class NaengoApi {
         [];
   }
 
-  /// 취향/알레르기 수정 (`PATCH /api/v1/users/me/profile`).
-  static Future<List<String>> patchProfileInput(List<String> inputs) async {
+  /// 취향 문장 추가 (`POST /api/v1/users/me/profile`).
+  /// 서버가 AI로 문체 정리 후 한 문장으로 저장.
+  static Future<List<String>> appendProfileInput(String text) async {
     final uri = Uri.parse('$springBase/api/v1/users/me/profile');
-    final r = await http.patch(
+    final r = await http.post(
       uri,
       headers: _authHeaders(),
-      body: jsonEncode({'user_input': inputs}),
+      body: jsonEncode({'text': text}),
     );
-
     if (r.statusCode != 200) {
-      throw HttpException('patchProfileInput ${r.statusCode}: ${r.body}',
-          uri: uri);
+      throw HttpException('appendProfileInput ${r.statusCode}: ${r.body}', uri: uri);
     }
+    final json = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+    return (json['user_input'] as List<dynamic>?)
+            ?.map((e) => e as String)
+            .toList() ??
+        [];
+  }
 
+  /// 취향 문장 삭제 (`DELETE /api/v1/users/me/profile`).
+  static Future<List<String>> deleteProfileInput(String text) async {
+    final uri = Uri.parse('$springBase/api/v1/users/me/profile');
+    final r = await http.delete(
+      uri,
+      headers: _authHeaders(),
+      body: jsonEncode({'text': text}),
+    );
+    if (r.statusCode != 200) {
+      throw HttpException('deleteProfileInput ${r.statusCode}: ${r.body}', uri: uri);
+    }
     final json = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
     return (json['user_input'] as List<dynamic>?)
             ?.map((e) => e as String)
@@ -460,14 +494,22 @@ class NaengoApi {
     Uri uri, {
     required String prompt,
     String? imageDataUrl,
+    List<Map<String, String>>? history,
   }) async* {
     final client = http.Client();
     try {
       final request = http.Request('POST', uri);
       request.headers['Content-Type'] = 'application/json';
+      request.headers['Accept'] = 'text/event-stream';
+      request.headers['Cache-Control'] = 'no-cache';
+      if (AuthServiceLocator.instance.token != null) {
+        request.headers['Authorization'] =
+            'Bearer ${AuthServiceLocator.instance.token}';
+      }
       request.body = jsonEncode({
         'prompt': prompt,
         if (imageDataUrl != null) 'image': imageDataUrl,
+        if (history != null) 'history': history,
       });
 
       final response = await client.send(request);
@@ -483,11 +525,7 @@ class NaengoApi {
         if (line.isEmpty) continue;
 
         if (line.startsWith('event: ')) {
-          // 다음 라인이 data: ... 인 형태 (표준 SSE) 혹은 
-          // 현재 라인 자체가 특정 이벤트를 의미할 수 있으나 
-          // 여기서는 'event: ' 와 'data: ' 쌍을 처리하기 위해 상태를 가질 수도 있음.
-          // 백엔드 구현에 맞게 간단히 파싱.
-          continue; 
+          continue;
         }
 
         if (line.startsWith('data: ')) {

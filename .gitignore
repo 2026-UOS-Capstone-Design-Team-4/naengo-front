@@ -9,3 +9,6 @@
 /.idea/.wiseGPT/
 /ios/Podfile
 /pubspec.lock
+
+# 로컬 환경 설정
+dart_defines.env

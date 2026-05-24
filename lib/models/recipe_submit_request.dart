@@ -1,6 +1,4 @@
-/// 레시피 작성 제출 요청 DTO.
-///
-/// API 연결 시: POST /api/v1/recipes 의 request body 로 사용.
+/// 레시피 작성 제출 요청 DTO. POST /api/v1/recipes 의 request body.
 class RecipeSubmitRequest {
   final String title;
   final String content; // 조리법 (NOT NULL)
@@ -26,15 +24,19 @@ class RecipeSubmitRequest {
 
   Map<String, dynamic> toJson() => {
         'title': title,
-        'content': content,
+        'description': description ?? '',
         'difficulty': difficulty,
         'category': category,
-        if (description != null && description!.isNotEmpty)
-          'description': description,
-        if (ingredientsRaw != null && ingredientsRaw!.isNotEmpty)
-          'ingredients_raw': ingredientsRaw,
-        if (cookingTime != null) 'cooking_time': cookingTime,
+        'tags': <String>[],
+        'tips': <String>[],
+        'warnings': <String>[],
+        'ingredients': <Map<String, dynamic>>[],
+        'steps': [
+          if (content.isNotEmpty)
+            {'step_no': 1, 'instruction': content},
+        ],
+        if (cookingTime != null) 'cooking_time_minutes': cookingTime,
         if (servings != null) 'servings': servings,
-        if (calories != null) 'calories': calories,
+        if (calories != null) 'kcal_per_serving': calories,
       };
 }

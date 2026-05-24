@@ -58,7 +58,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
     try {
       final rooms = await NaengoApi.listRooms();
       if (!mounted) return;
-      MockDataService.mergeServerRooms(rooms);
+      MockDataService.mergeServerRooms(rooms, activeLocalRoomId: widget.currentRoomId);
       setState(() => _isLoadingRooms = false);
     } catch (e, st) {
       debugPrint('[Sidebar] listRooms 실패: $e\n$st');

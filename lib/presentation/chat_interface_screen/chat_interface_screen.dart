@@ -221,17 +221,29 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
         ? text
         : '사진 속 재료로 만들 수 있는 요리를 추천해주세요.';
 
-    // ── 4. SSE 스트림 — 첫 메시지면 새 방, 아니면 기존 방 ──
-    final stream = _serverRoomId == null
-        ? NaengoApi.createRoomAndChat(
-            prompt: prompt,
-            imageDataUrl: imageDataUrl,
-          )
-        : NaengoApi.sendInRoom(
-            roomId: _serverRoomId!,
-            prompt: prompt,
-            imageDataUrl: imageDataUrl,
-          );
+    // ── 4. SSE 스트림 — 로그인 여부로 분기 ──
+    final isLoggedIn = AuthServiceLocator.instance.isLoggedIn;
+    final Stream<ChatEvent> stream;
+    if (!isLoggedIn) {
+      // 비로그인: 서버에 방을 만들지 않고 게스트 엔드포인트 사용.
+      // 현재 메시지 이전 대화를 history로 전달 (마지막 2개 = user+AI placeholder 제외).
+      stream = NaengoApi.guestChat(
+        prompt: prompt,
+        imageDataUrl: imageDataUrl,
+        history: _buildGuestHistory(),
+      );
+    } else if (_serverRoomId == null) {
+      stream = NaengoApi.createRoomAndChat(
+        prompt: prompt,
+        imageDataUrl: imageDataUrl,
+      );
+    } else {
+      stream = NaengoApi.sendInRoom(
+        roomId: _serverRoomId!,
+        prompt: prompt,
+        imageDataUrl: imageDataUrl,
+      );
+    }
 
     await _activeStream?.cancel();
 
@@ -247,11 +259,6 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
             event.roomId,
           );
           _currentRoom = _currentRoom.copyWith(serverRoomId: event.roomId);
-          // 비로그인: 첫 메시지 전송 시 이전 채팅방 제거 → 현재 방만 남김
-          if (!AuthServiceLocator.instance.isLoggedIn) {
-            MockDataService.chatRooms
-                .removeWhere((r) => r.roomId != _currentRoom.roomId);
-          }
         } else if (event is MessageChunk) {
           // 첫 청크 도착 → 로딩 인디케이터 끄고 AI 버블 노출
           if (firstChunk) {
@@ -267,7 +274,6 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
           setState(() {});
 
           // 팁이 있으면 카드 다음에 별도 AI 채팅 버블로 추가
-          // (사용자 요청: "팁같은 것은 그 팝업 그다음 채팅 밑에 작성")
           final tipsText = _formatRecipesTips(event.recipes);
           if (tipsText.isNotEmpty) {
             _addMessage(ChatMessage(
@@ -319,6 +325,21 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
       if (!mounted) return;
       setState(() => _isLoading = false);
     }
+  }
+
+  /// 게스트 채팅 history 생성.
+  /// _messages 에서 현재 전송 중인 user 메시지 + AI placeholder(마지막 2개) 제외,
+  /// 최대 20개까지만 포함 (API 제한).
+  List<Map<String, String>> _buildGuestHistory() {
+    final end = _messages.length - 2;
+    if (end <= 0) return const [];
+    final start = end > 20 ? end - 20 : 0;
+    return _messages.sublist(start, end).map((m) {
+      return {
+        'role': m.isMe ? 'user' : 'assistant',
+        'content': m.text,
+      };
+    }).toList();
   }
 
   /// 스트리밍 실패 시 자리표시자 메시지를 에러 안내로 마무리.

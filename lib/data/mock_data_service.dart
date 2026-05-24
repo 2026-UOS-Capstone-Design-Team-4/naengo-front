@@ -6,7 +6,6 @@ import '../models/recipe_item.dart';
 import '../models/user.dart';
 import '../models/user_profile.dart';
 
-/// 백엔드 연결 전 테스트용 목 데이터.
 class MockDataService {
   MockDataService._();
 
@@ -102,13 +101,20 @@ class MockDataService {
   ///
   /// 정책:
   ///   - 서버에서 받은 방은 source of truth → 그대로 반영
-  ///   - 아직 첫 메시지를 안 보낸 로컬 전용 방 (serverRoomId == null) 은 보존
+  ///   - [activeLocalRoomId]가 지정된 경우 해당 방만 보존 (현재 채팅 중인 신규 방)
+  ///   - 비로그인 게스트 채팅 중 생성된 방은 포함하지 않음
   ///
   /// 결과는 `updatedAt` 내림차순 정렬.
-  static void mergeServerRooms(List<ChatRoom> serverRooms) {
-    final pending = chatRooms
-        .where((r) => r.serverRoomId == null)
-        .toList(growable: false);
+  static void mergeServerRooms(
+    List<ChatRoom> serverRooms, {
+    String? activeLocalRoomId,
+  }) {
+    final pending = activeLocalRoomId != null
+        ? chatRooms
+            .where((r) =>
+                r.serverRoomId == null && r.roomId == activeLocalRoomId)
+            .toList(growable: false)
+        : <ChatRoom>[];
     chatRooms = [...pending, ...serverRooms]
       ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
   }
