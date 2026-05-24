@@ -92,22 +92,25 @@ class RecipeItem {
         recipeId: j['user_recipe_id'] as int? ?? j['pending_recipe_id'] as int,
         title: j['title'] as String,
         description: j['description'] as String?,
-        ingredientsRaw: j['ingredients_raw'] as String? ?? '',
+        ingredientsRaw: ((j['ingredients'] as List?) ?? const [])
+            .map((e) => ((e as Map)['name'] as String? ?? '').trim())
+            .where((e) => e.isNotEmpty)
+            .join(', '),
         ingredientsList: ((j['ingredients'] as List?) ?? const [])
             .map((e) => ((e as Map)['name'] as String? ?? '').trim())
             .where((e) => e.isNotEmpty)
             .toList(growable: false),
         cookingSteps: _parsePendingSteps(j),
-        imageUrl: j['image_url'] as String?,
+        imageUrl: j['main_image_url'] as String?,
         videoUrl: j['video_url'] as String?,
         source: 'USER',
         authorId: j['user_id'] as int?,
         status: j['status'] as String? ?? 'PENDING',
         createdAt: DateTime.parse(j['created_at'] as String),
         difficulty: j['difficulty'] as String?,
-        cookingTime: j['cooking_time'] as int?,
+        cookingTime: j['cooking_time_minutes'] as int?,
         servings: (j['servings'] as num?)?.toDouble(),
-        calories: j['calories'] as int?,
+        calories: j['kcal_per_serving'] as int?,
         category: ((j['category'] as List?) ?? const [])
             .map((e) => e as String)
             .toList(growable: false),
@@ -115,6 +118,15 @@ class RecipeItem {
       );
 
   static List<String> _parsePendingSteps(Map<String, dynamic> j) {
+    // UserRecipeResponse: steps[]는 {step_no, instruction, ...} 배열
+    final steps = j['steps'] as List?;
+    if (steps != null && steps.isNotEmpty) {
+      return steps
+          .map((e) => (e as Map<String, dynamic>)['instruction'] as String? ?? '')
+          .where((s) => s.isNotEmpty)
+          .toList(growable: false);
+    }
+    // 구버전 호환
     final instructions = j['instructions'] as List?;
     if (instructions != null) {
       return instructions.map((e) => e as String).toList(growable: false);

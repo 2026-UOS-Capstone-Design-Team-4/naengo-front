@@ -31,19 +31,4 @@ class CameraService {
       return null;
     }
   }
-
-  /// 갤러리에서 사진 선택 (필요 시 사용).
-  static Future<XFile?> pickFromGallery({
-    int imageQuality = 85,
-  }) async {
-    try {
-      return await _picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: imageQuality,
-      );
-    } catch (e) {
-      debugPrint('[CameraService] 갤러리 선택 실패: $e');
-      return null;
-    }
-  }
 }

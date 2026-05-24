@@ -397,6 +397,16 @@ class NaengoApi {
     return list.map((e) => (e as Map).cast<String, dynamic>()).toList();
   }
 
+  /// 내가 제출한 레시피 단건 조회 (`GET /api/v1/user-recipes/{id}`).
+  static Future<Map<String, dynamic>> getUserRecipe(int id) async {
+    final uri = Uri.parse('$baseUrl/api/v1/user-recipes/$id');
+    final r = await http.get(uri, headers: _authHeaders());
+    if (r.statusCode != 200) {
+      throw HttpException('getUserRecipe ${r.statusCode}: ${r.body}', uri: uri);
+    }
+    return jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+  }
+
   /// 제출한 레시피 삭제 (`DELETE /api/v1/user-recipes/{id}`).
   static Future<void> deletePendingRecipe(int id) async {
     final uri = Uri.parse('$baseUrl/api/v1/user-recipes/$id');

@@ -19,6 +19,9 @@ class Recipe {
   final String? videoUrl;
   final String? imageUrl;
   final String authorType; // 'ADMIN' | 'USER'
+  final String? summary;
+  final List<String> warnings;
+  final String? sourceUrl;
   final int likesCount;
   final int scrapCount;
   final bool isLiked;
@@ -42,6 +45,9 @@ class Recipe {
     this.videoUrl,
     this.imageUrl,
     required this.authorType,
+    this.summary,
+    this.warnings = const [],
+    this.sourceUrl,
     this.likesCount = 0,
     this.scrapCount = 0,
     this.isLiked = false,
@@ -57,7 +63,11 @@ class Recipe {
       ingredients: ((json['ingredients'] as List?) ?? const [])
           .map((e) => IngredientItem.fromJson(e as Map<String, dynamic>))
           .toList(growable: false),
-      ingredientsRaw: json['ingredients_raw'] as String? ?? '',
+      ingredientsRaw: json['ingredients_raw'] as String? ??
+          ((json['ingredients'] as List?) ?? const [])
+              .map((e) => (e as Map<String, dynamic>)['name'] as String? ?? '')
+              .where((n) => n.isNotEmpty)
+              .join(', '),
       instructions: ((json['steps'] as List?) ?? const [])
           .map((e) => (e as Map<String, dynamic>)['instruction'] as String? ?? '')
           .where((s) => s.isNotEmpty)
@@ -76,8 +86,11 @@ class Recipe {
           .map((e) => e as String)
           .toList(growable: false),
       videoUrl: json['video_url'] as String?,
-      imageUrl: json['image_url'] as String?,
+      imageUrl: json['main_image_url'] as String?,
       authorType: json['author_type'] as String? ?? 'ADMIN',
+      summary: json['summary'] as String?,
+      warnings: ((json['warnings'] as List?) ?? const []).map((e) => e as String).toList(growable: false),
+      sourceUrl: json['source_url'] as String?,
       likesCount: json['likes_count'] as int? ?? 0,
       scrapCount: json['scrap_count'] as int? ?? 0,
       isLiked: json['is_liked'] as bool? ?? false,
@@ -108,7 +121,7 @@ class IngredientItem {
   factory IngredientItem.fromJson(Map<String, dynamic> json) {
     return IngredientItem(
       name: json['name'] as String? ?? '',
-      amount: json['amount'] as String? ?? '',
+      amount: json['amount_text'] as String? ?? '',
       unit: json['unit'] as String? ?? '',
       type: json['type'] as String? ?? '',
       note: json['note'] as String?,

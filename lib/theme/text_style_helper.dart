@@ -38,12 +38,6 @@ class TextStyleHelper {
   // Title Styles
   // Medium text styles for titles and subtitles
 
-  TextStyle get title20RegularRoboto => TextStyle(
-    fontSize: 20.fSize,
-    fontWeight: FontWeight.w400,
-    fontFamily: 'Roboto',
-  );
-
   TextStyle get title20ExtraBoldNanumSquareAc => TextStyle(
     fontSize: 20.fSize,
     fontWeight: FontWeight.w800,
@@ -115,15 +109,4 @@ class TextStyleHelper {
   // Label Styles
   // Small text styles for labels, captions, and hints
 
-  TextStyle get label10MediumNotoSansKR => TextStyle(
-    fontSize: 10.fSize,
-    fontWeight: FontWeight.w500,
-    fontFamily: 'Noto Sans KR',
-    color: appTheme.basis,
-  );
-
-  // Other Styles
-  // Miscellaneous text styles without specified font size
-
-  TextStyle get textStyle15 => TextStyle();
 }

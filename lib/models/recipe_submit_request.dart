@@ -30,7 +30,14 @@ class RecipeSubmitRequest {
         'tags': <String>[],
         'tips': <String>[],
         'warnings': <String>[],
-        'ingredients': <Map<String, dynamic>>[],
+        'ingredients': ingredientsRaw == null || ingredientsRaw!.trim().isEmpty
+            ? <Map<String, dynamic>>[]
+            : ingredientsRaw!
+                .split('\n')
+                .map((line) => line.trim())
+                .where((line) => line.isNotEmpty)
+                .map((line) => <String, dynamic>{'name': line, 'raw_text': line})
+                .toList(),
         'steps': [
           if (content.isNotEmpty)
             {'step_no': 1, 'instruction': content},
