@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../core/app_export.dart';
 import '../../services/auth_service.dart';
@@ -68,7 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   SizedBox(height: 12.h),
                   Text(
-                    '간편하게 로그인하고 다양한 서비스를\n이용해보세요.',
+                    '간편하게 로그인하고\n다양한 서비스를 이용해보세요.',
                     style: TextStyle(
                       fontSize: 14.fSize,
                       fontFamily: 'Noto Sans KR',
@@ -84,50 +85,42 @@ class _LoginScreenState extends State<LoginScreen> {
 
             // 버튼 영역
             Padding(
-              padding: EdgeInsets.fromLTRB(24.h, 0, 24.h, 52.h),
+              padding: EdgeInsets.fromLTRB(24.h, 0, 24.h, 0),
               child: Column(
                 children: [
                   // 카카오 로그인 버튼
                   SizedBox(
                     width: double.infinity,
-                    height: 56.h,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _doKakaoLogin,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFEE500),
-                        disabledBackgroundColor:
-                            const Color(0xFFFEE500).withValues(alpha: 0.6),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.h),
-                        ),
-                      ),
+                    height: 52.h,
+                    child: GestureDetector(
+                      onTap: _isLoading ? null : _doKakaoLogin,
                       child: _isLoading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
+                          ? Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEE500),
+                                borderRadius: BorderRadius.circular(6.h),
+                              ),
+                              alignment: Alignment.center,
+                              child: const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
                                   strokeWidth: 2.5,
-                                  color: Colors.black45),
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                // 카카오 말풍선 아이콘 (근사)
-                                Icon(Icons.chat_bubble_rounded,
-                                    size: 22.h,
-                                    color: Colors.black87),
-                                SizedBox(width: 8.h),
-                                Text(
-                                  '카카오 로그인',
-                                  style: TextStyle(
-                                    fontSize: 16.fSize,
-                                    fontWeight: FontWeight.w700,
-                                    fontFamily: 'Noto Sans KR',
-                                    color: Colors.black87,
-                                  ),
+                                  color: Colors.black45,
                                 ),
-                              ],
+                              ),
+                            )
+                          : Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEE500),
+                                borderRadius: BorderRadius.circular(6.h),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              alignment: Alignment.center,
+                              child: SvgPicture.asset(
+                                'assets/images/kakao_login_medium_wide.svg',
+                                height: 52.h,
+                              ),
                             ),
                     ),
                   ),
@@ -151,6 +144,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
             ),
+
+            const Spacer(),
           ],
         ),
       ),

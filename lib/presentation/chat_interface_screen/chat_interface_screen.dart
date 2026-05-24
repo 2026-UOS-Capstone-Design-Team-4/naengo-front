@@ -169,6 +169,11 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
     await _sendChat(text: text);
   }
 
+  /// 비로그인 상태에서 사용자가 보낸 메시지가 20개 이상이면 true.
+  bool get _isGuestLimitReached =>
+      !AuthServiceLocator.instance.isLoggedIn &&
+      _messages.where((m) => m.isMe).length >= 20;
+
   /// 텍스트 / 이미지 / 둘 다 — 모든 메시지 송신의 단일 진입점.
   ///
   /// 흐름:
@@ -179,6 +184,7 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
   Future<void> _sendChat({String text = '', File? imageFile}) async {
     if (text.isEmpty && imageFile == null) return;
     if (_isLoading) return;
+    if (_isGuestLimitReached) return;
 
     // ── 1. 사용자 메시지 추가 ──
     _addMessage(ChatMessage(
@@ -1067,7 +1073,65 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
     );
   }
 
+  Widget _buildGuestLimitBanner() {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 12.h, vertical: 10.h),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 16.h, vertical: 14.h),
+          decoration: BoxDecoration(
+            color: appTheme.maximumlight,
+            borderRadius: BorderRadius.circular(16.h),
+            border: Border.all(color: appTheme.mainUI.withAlpha(80)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '게스트 채팅은 20개까지만 이용할 수 있어요.',
+                style: TextStyle(
+                  fontSize: 13.fSize,
+                  color: appTheme.text,
+                  fontFamily: 'Noto Sans KR',
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 10.h),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () =>
+                      Navigator.of(context).pushNamed(AppRoutes.loginScreen),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: appTheme.mainUI,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: EdgeInsets.symmetric(vertical: 12.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30.h),
+                    ),
+                  ),
+                  child: Text(
+                    '로그인하고 계속하기',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14.fSize,
+                      fontFamily: 'Noto Sans KR',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildInputArea(BuildContext context) {
+    if (_isGuestLimitReached) return _buildGuestLimitBanner();
+
     return SafeArea(
       top: false,
       child: Padding(
