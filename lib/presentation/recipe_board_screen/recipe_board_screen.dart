@@ -235,6 +235,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16.h),
       decoration: BoxDecoration(
+        color: appTheme.background,
         border: Border(bottom: BorderSide(color: appTheme.verylight, width: 1)),
       ),
       child: Row(
@@ -316,7 +317,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
       child: Material(
         elevation: 3,
         borderRadius: BorderRadius.circular(12.h),
-        shadowColor: Colors.black.withValues(alpha: 0.1),
+        shadowColor: appTheme.lightbasis,
         child: Container(
           width: 130.h,
           padding: EdgeInsets.all(6.h),
@@ -376,7 +377,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
   Widget _buildAllList() {
     final recipes = _allRecipes;
     if (_isLoadingAll && recipes.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator(color: appTheme.basis));
     }
     if (_allLoadError != null && recipes.isEmpty) {
       return _buildMessageList(_allLoadError!, onRefresh: _loadAllRecipes);
@@ -389,32 +390,47 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
     }
     return RefreshIndicator(
       onRefresh: _loadAllRecipes,
-      child: ListView.separated(
+      color: appTheme.basis,
+      child: CustomScrollView(
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.symmetric(horizontal: 16.h, vertical: 12.h),
-        itemCount: recipes.length + (_isLoadingMore ? 1 : 0),
-        separatorBuilder: (_, __) => SizedBox(height: 10.h),
-        itemBuilder: (context, index) {
-          if (index == recipes.length) {
-            return Padding(
-              padding: EdgeInsets.symmetric(vertical: 16.h),
-              child: const Center(child: CircularProgressIndicator()),
-            );
-          }
-          final recipe = recipes[index];
-          return GestureDetector(
-            onTap: () => _navigateToDetail(recipe),
-            child: _buildRecipeCard(recipe),
-          );
-        },
+        slivers: [
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: 16.h, vertical: 12.h),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 10.h,
+                mainAxisSpacing: 10.h,
+                mainAxisExtent: 202.h,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final recipe = recipes[index];
+                  return GestureDetector(
+                    onTap: () => _navigateToDetail(recipe),
+                    child: _buildRecipeCard(recipe),
+                  );
+                },
+                childCount: recipes.length,
+              ),
+            ),
+          ),
+          if (_isLoadingMore)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 16.h),
+                child: Center(child: CircularProgressIndicator(color: appTheme.basis)),
+              ),
+            ),
+        ],
       ),
     );
   }
 
   Widget _buildMyList() {
     if (_isLoadingMine) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: CircularProgressIndicator(color: appTheme.basis));
     }
     if (_myRecipes.isEmpty) {
       return _buildMessageList(
@@ -424,6 +440,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
     }
     return RefreshIndicator(
       onRefresh: _loadMyRecipes,
+      color: appTheme.basis,
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.symmetric(horizontal: 16.h, vertical: 12.h),
@@ -443,6 +460,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
   }) {
     return RefreshIndicator(
       onRefresh: onRefresh,
+      color: appTheme.basis,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
@@ -460,54 +478,65 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
   }
 
   Widget _buildRecipeCard(RecipeItem recipe) {
-    return ConstrainedBox(
-      constraints: BoxConstraints(minHeight: 113.h),
-      child: Container(
-        padding: EdgeInsets.all(12.h),
-        decoration: BoxDecoration(
-          color: appTheme.background,
-          borderRadius: BorderRadius.circular(12.h),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.07),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+    return Container(
+      decoration: BoxDecoration(
+        color: appTheme.maximumlight,
+        borderRadius: BorderRadius.circular(12.h),
+        border: Border.all(color: appTheme.mainUI, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(10.h),
+              topRight: Radius.circular(10.h),
             ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            _buildThumbnail(recipe.imageUrl),
-            SizedBox(width: 12.h),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    recipe.title,
-                    style: TextStyleHelper.instance.body15BoldNanumSquareAc
-                        .copyWith(fontSize: 15.fSize),
-                  ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    recipe.ingredientsRaw,
-                    style: TextStyle(
-                      fontSize: 11.fSize,
-                      color: appTheme.disabled,
+            child: SizedBox(
+              height: 110.h,
+              width: double.infinity,
+              child: recipe.imageUrl != null
+                  ? Image.network(recipe.imageUrl!, fit: BoxFit.cover)
+                  : Container(
+                      color: appTheme.lightbasis,
+                      child: Center(
+                        child: Icon(
+                          Icons.restaurant_rounded,
+                          size: 48.h,
+                          color: appTheme.mainUI.withValues(alpha: 0.5),
+                        ),
+                      ),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: 8.h),
-                  _buildLikeBookmarkRow(recipe),
-                ],
-              ),
             ),
-          ],
-        ),
+          ),
+          Padding(
+            padding: EdgeInsets.all(10.h),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  recipe.title,
+                  style: TextStyleHelper.instance.body15BoldNanumSquareAc
+                      .copyWith(fontSize: 13.fSize),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: 3.h),
+                Text(
+                  recipe.ingredientsRaw,
+                  style: TextStyle(
+                    fontSize: 11.fSize,
+                    color: appTheme.disabled,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: 6.h),
+                _buildLikeBookmarkRow(recipe),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -518,15 +547,9 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
       child: Container(
         padding: EdgeInsets.all(12.h),
         decoration: BoxDecoration(
-          color: appTheme.background,
+          color: appTheme.maximumlight,
           borderRadius: BorderRadius.circular(12.h),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.07),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color: appTheme.mainUI, width: 1.5),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -625,12 +648,15 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('레시피 삭제'),
-        content: Text('\'${recipe.title}\' 레시피를 삭제할까요?'),
+        backgroundColor: appTheme.background,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.h)),
+        title: Text('레시피 삭제', style: TextStyleHelper.instance.body15BoldNanumSquareAc),
+        content: Text('\'${recipe.title}\' 레시피를 삭제할까요?',
+            style: TextStyleHelper.instance.body15RegularNanumSquareAc),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
+            child: Text('취소', style: TextStyle(color: appTheme.disabled)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),

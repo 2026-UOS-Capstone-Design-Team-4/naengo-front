@@ -37,10 +37,9 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
   bool _isPanelOpen = false;
   bool _isLoading = false;
   bool _didInitialize = false;
-  bool _titleUpdated = false; // 첫 메시지로 방 제목 한 번만 업데이트
+  bool _titleUpdated = false;
 
   late ChatRoom _currentRoom;
-  // ChatStore에서 로드한 뒤 같은 참조를 유지
   late List<ChatMessage> _messages;
 
   /// Naengo 백엔드가 부여한 정수 room_id.
@@ -99,7 +98,6 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
       );
       _messages = ChatStore.getMessages(_currentRoom.roomId);
 
-      // 진입 인자에 따라 첫 메시지 자동 전송
       if (args is String && args.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _sendInitialMessage(args);
@@ -160,10 +158,9 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
 
   void _addMessage(ChatMessage message) {
     ChatStore.addMessage(_currentRoom.roomId, message);
-    setState(() {}); // _messages는 같은 리스트 참조라 setState만 호출
+    setState(() {});
   }
 
-  /// 텍스트 전송 — 입력창에서 종이비행기 버튼 눌렀을 때.
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty || _isLoading) return;
@@ -171,7 +168,6 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
     await _sendChat(text: text);
   }
 
-  /// 비로그인 상태에서 사용자가 보낸 메시지가 20개 이상이면 true.
   bool get _isGuestLimitReached =>
       !AuthServiceLocator.instance.isLoggedIn &&
       _messages.where((m) => m.isMe).length >= 20;
