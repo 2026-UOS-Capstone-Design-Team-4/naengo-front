@@ -1,13 +1,9 @@
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 
-import '../data/mock_data_service.dart';
 import '../models/user.dart';
 import '../models/user_profile.dart';
 import 'naengo_api_service.dart';
 
-///
-/// 프로필 화면은 이 인터페이스만 바라봄 →
-/// [MockAuthService] → [RealAuthService] 교체 시 UI 코드 수정 불필요.
 abstract class AuthService {
   /// 현재 로그인된 사용자 기본 정보.
   AppUser get currentUser;
@@ -44,10 +40,10 @@ abstract class AuthService {
 }
 
 /// 현재 앱 전역에서 사용할 AuthService 인스턴스.
-/// main()에서 RealAuthService로 교체 및 토큰 복원 후 runApp() 호출.
+/// main()에서 토큰 복원 후 runApp() 호출.
 class AuthServiceLocator {
   AuthServiceLocator._();
-  static AuthService instance = MockAuthService();
+  static AuthService instance = RealAuthService();
 }
 
 // ─────────────────────────────────────────────────────────
@@ -112,7 +108,12 @@ class RealAuthService implements AuthService {
       'is_active': true,
     });
 
-    // 4. 프로필 로드 (실패해도 로그인은 유지)
+    // 4. 전체 사용자 정보 조회 (user_identities 포함)
+    try {
+      _user = await NaengoApi.getMe();
+    } catch (_) {}
+
+    // 5. 프로필 로드 (실패해도 로그인은 유지)
     try {
       _userInput = await NaengoApi.getProfileInput();
     } catch (_) {
@@ -175,58 +176,3 @@ class RealAuthService implements AuthService {
   }
 }
 
-// ─────────────────────────────────────────────────────────
-// Mock 구현 — 실제 서버 없이 UI 개발/테스트 용
-// ─────────────────────────────────────────────────────────
-
-class MockAuthService implements AuthService {
-  bool _loggedIn = false;
-
-  @override
-  AppUser get currentUser => MockDataService.currentUser;
-
-  @override
-  UserProfile get currentProfile => MockDataService.currentProfile;
-
-  @override
-  bool get isLoggedIn => _loggedIn;
-
-  @override
-  String? get token => null;
-
-  @override
-  Future<AppUser> loginWithKakao() async {
-    _loggedIn = true;
-    return MockDataService.currentUser;
-  }
-
-  @override
-  Future<AppUser> login(String email, String password) async {
-    _loggedIn = true;
-    return MockDataService.currentUser;
-  }
-
-  @override
-  Future<AppUser> signup(String email, String password, String nickname) async =>
-      MockDataService.currentUser;
-
-  @override
-  Future<void> load() async {}
-
-  @override
-  Future<void> updateUserInput(List<String> inputs) async {
-    MockDataService.currentProfile =
-        MockDataService.currentProfile.copyWith(userInput: inputs);
-  }
-
-  @override
-  Future<void> updateNickname(String nickname) async {
-    MockDataService.currentUser =
-        MockDataService.currentUser.copyWith(nickname: nickname);
-  }
-
-  @override
-  Future<void> logout() async {
-    _loggedIn = false;
-  }
-}

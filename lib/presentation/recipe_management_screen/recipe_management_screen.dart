@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
-import '../../data/mock_data_service.dart';
+import '../../data/chat_store.dart';
 import '../../models/chat_room.dart';
 import '../../services/auth_service.dart';
 import '../../services/naengo_api_service.dart';
@@ -47,7 +47,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
     _refreshRoomsFromServer();
   }
 
-  /// 백엔드에서 채팅방 목록을 새로 받아와 `MockDataService` cache 갱신.
+  /// 백엔드에서 채팅방 목록을 새로 받아와 `ChatStore` cache 갱신.
   /// 실패해도 앱 죽이지 않고 기존 cache 그대로 보여줌 + 작은 에러 안내.
   Future<void> _refreshRoomsFromServer() async {
     if (!_isLoggedIn) return; // 비로그인 시 서버 동기화 불필요
@@ -58,7 +58,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
     try {
       final rooms = await NaengoApi.listRooms();
       if (!mounted) return;
-      MockDataService.mergeServerRooms(rooms, activeLocalRoomId: widget.currentRoomId);
+      ChatStore.mergeServerRooms(rooms, activeLocalRoomId: widget.currentRoomId);
       setState(() => _isLoadingRooms = false);
     } catch (e, st) {
       debugPrint('[Sidebar] listRooms 실패: $e\n$st');
@@ -86,8 +86,8 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
     if (!mounted || confirmed != true) return;
 
     // 낙관적 제거 — 즉시 UI 반영
-    final previousRooms = List<ChatRoom>.from(MockDataService.chatRooms);
-    setState(() => MockDataService.removeRoom(room.roomId));
+    final previousRooms = List<ChatRoom>.from(ChatStore.chatRooms);
+    setState(() => ChatStore.removeRoom(room.roomId));
 
     if (room.serverRoomId == null) return; // 로컬 전용 방이면 끝
 
@@ -98,7 +98,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
       if (!mounted) return;
       // 백엔드 삭제 실패 → 로컬 상태 롤백 (사라졌던 방 다시 표시)
       setState(() {
-        MockDataService.chatRooms = previousRooms;
+        ChatStore.chatRooms = previousRooms;
       });
       NaengoSnackBar.show(
         context,
@@ -341,7 +341,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
 
   // 비로그인 전용 — 현재 채팅방 1개만 표시
   Widget _buildCurrentChatSection() {
-    final rooms = MockDataService.chatRooms;
+    final rooms = ChatStore.chatRooms;
     if (rooms.isEmpty) return const SizedBox.shrink();
 
     final current = rooms.firstWhere(
@@ -448,7 +448,7 @@ class _RecipeManagementScreenState extends State<RecipeManagementScreen> {
 
   // 채팅방 목록 — 이 영역만 스크롤 (펼쳐진 경우에만 그려짐)
   Widget _buildChatList() {
-    final rooms = MockDataService.chatRooms;
+    final rooms = ChatStore.chatRooms;
 
     // 첫 로딩 중에 cache 도 비어있으면 로딩 인디케이터만 표시.
     // (cache 가 있으면 일단 보여주고 백그라운드에서 갱신 — 깜빡임 방지)

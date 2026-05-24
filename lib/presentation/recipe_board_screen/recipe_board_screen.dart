@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
-import '../../data/mock_data_service.dart';
+import '../../data/recipe_reaction_store.dart';
 import '../shared/recipe_reaction.dart';
 import '../../models/recipe_item.dart';
 import '../../services/auth_service.dart';
@@ -41,18 +41,33 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
   @override
   void initState() {
     super.initState();
-    MockDataService.recipesNotifier.addListener(_onRecipesChanged);
     _scrollController.addListener(_onScroll);
+    RecipeReactionStore.reactionNotifier.addListener(_onReactionChanged);
     _loadAllRecipes();
     _loadMyRecipes();
   }
 
   @override
   void dispose() {
-    MockDataService.recipesNotifier.removeListener(_onRecipesChanged);
     _scrollController.removeListener(_onScroll);
+    RecipeReactionStore.reactionNotifier.removeListener(_onReactionChanged);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onReactionChanged() {
+    if (!mounted) return;
+    setState(() {
+      for (final recipe in [..._allRecipes, ..._myRecipes]) {
+        final cached = RecipeReactionStore.getReaction(recipe.recipeId);
+        if (cached != null) {
+          recipe.isLiked = cached.isLiked;
+          recipe.isBookmarked = cached.isBookmarked;
+          recipe.likesCount = cached.likesCount;
+          recipe.scrapCount = cached.scrapCount;
+        }
+      }
+    });
   }
 
   void _onScroll() {
@@ -62,12 +77,6 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
         _scrollController.position.maxScrollExtent - 200) {
       _loadMoreRecipes();
     }
-  }
-
-  void _onRecipesChanged() {
-    if (mounted) setState(() => _tab = _Tab.mine);
-    _loadAllRecipes();
-    _loadMyRecipes();
   }
 
   void _switchTab(_Tab tab) {
@@ -633,7 +642,6 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
     if (confirmed != true || !mounted) return;
     try {
       await NaengoApi.deletePendingRecipe(recipe.recipeId);
-      MockDataService.deleteRecipe(recipe.recipeId);
       setState(() => _myRecipes.removeWhere((r) => r.recipeId == recipe.recipeId));
     } catch (_) {
       if (!mounted) return;

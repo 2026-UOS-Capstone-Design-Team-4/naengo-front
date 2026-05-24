@@ -3,9 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
-import '../../data/mock_data_service.dart';
+import '../../data/recipe_reaction_store.dart';
 import '../../models/recipe_item.dart';
 import '../../services/camera_service.dart';
+import '../../services/naengo_api_service.dart';
 import '../../widgets/custom_image_view.dart';
 import '../recipe_detail_screen/recipe_detail_screen.dart';
 import './widgets/recipe_card_widget.dart';
@@ -21,18 +22,51 @@ class RecipeRecommendationScreen extends StatefulWidget {
 class _RecipeRecommendationScreenState
     extends State<RecipeRecommendationScreen> {
   final TextEditingController _messageController = TextEditingController();
-  late final List<RecipeItem> _recommendations;
+  List<RecipeItem> _recommendations = [];
+  bool _isLoadingRecommendations = false;
 
   @override
   void initState() {
     super.initState();
-    _recommendations = MockDataService.getRecommendations(count: 3);
+    RecipeReactionStore.reactionNotifier.addListener(_onReactionChanged);
+    _loadRecommendations();
+  }
+
+  Future<void> _loadRecommendations() async {
+    setState(() => _isLoadingRecommendations = true);
+    try {
+      final result = await NaengoApi.getRecipes(sort: 'likes', limit: 3);
+      if (!mounted) return;
+      setState(() {
+        _recommendations = result.items.map(RecipeItem.fromRecipe).toList();
+        _isLoadingRecommendations = false;
+      });
+    } catch (e) {
+      debugPrint('[Recommendation] 인기 레시피 로드 실패: $e');
+      if (mounted) setState(() => _isLoadingRecommendations = false);
+    }
   }
 
   @override
   void dispose() {
+    RecipeReactionStore.reactionNotifier.removeListener(_onReactionChanged);
     _messageController.dispose();
     super.dispose();
+  }
+
+  void _onReactionChanged() {
+    if (!mounted) return;
+    setState(() {
+      for (final recipe in _recommendations) {
+        final cached = RecipeReactionStore.getReaction(recipe.recipeId);
+        if (cached != null) {
+          recipe.isLiked = cached.isLiked;
+          recipe.isBookmarked = cached.isBookmarked;
+          recipe.likesCount = cached.likesCount;
+          recipe.scrapCount = cached.scrapCount;
+        }
+      }
+    });
   }
 
   void _onSendMessagePressed() {
@@ -233,24 +267,27 @@ class _RecipeRecommendationScreenState
           ),
         ),
         SizedBox(height: 12.h),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: _recommendations.asMap().entries.map((entry) {
-              final index = entry.key;
-              final recipe = entry.value;
-              return Padding(
-                padding: EdgeInsets.only(
-                  right: index < _recommendations.length - 1 ? 16.h : 0,
-                ),
-                child: RecipeCardWidget(
-                  recipe: recipe,
-                  onTap: () => _navigateToDetail(recipe),
-                ),
-              );
-            }).toList(),
+        if (_isLoadingRecommendations)
+          const Center(child: CircularProgressIndicator())
+        else
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: _recommendations.asMap().entries.map((entry) {
+                final index = entry.key;
+                final recipe = entry.value;
+                return Padding(
+                  padding: EdgeInsets.only(
+                    right: index < _recommendations.length - 1 ? 16.h : 0,
+                  ),
+                  child: RecipeCardWidget(
+                    recipe: recipe,
+                    onTap: () => _navigateToDetail(recipe),
+                  ),
+                );
+              }).toList(),
+            ),
           ),
-        ),
       ],
     );
   }

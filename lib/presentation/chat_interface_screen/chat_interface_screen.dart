@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
-import '../../data/mock_data_service.dart';
+import '../../data/chat_store.dart';
 import '../../models/chat_message.dart';
 import '../../models/chat_room.dart';
 import '../../models/recipe.dart';
@@ -40,7 +40,7 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
   bool _titleUpdated = false; // 첫 메시지로 방 제목 한 번만 업데이트
 
   late ChatRoom _currentRoom;
-  // MockDataService에서 로드한 뒤 같은 참조를 유지
+  // ChatStore에서 로드한 뒤 같은 참조를 유지
   late List<ChatMessage> _messages;
 
   /// Naengo 백엔드가 부여한 정수 room_id.
@@ -83,7 +83,7 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
       _currentRoom = args;
       _titleUpdated = true;
       _serverRoomId = args.serverRoomId;
-      _messages = MockDataService.getMessages(_currentRoom.roomId);
+      _messages = ChatStore.getMessages(_currentRoom.roomId);
 
       // 백엔드에 등록된 방이면 최신 내역을 가져옴 (캐시는 우선 노출).
       // 실패 시엔 기존 캐시 그대로 두고 조용히 로그만 남김.
@@ -94,8 +94,10 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
       }
     } else {
       // 새 채팅방 생성
-      _currentRoom = MockDataService.createRoom();
-      _messages = MockDataService.getMessages(_currentRoom.roomId);
+      _currentRoom = ChatStore.createRoom(
+        userId: AuthServiceLocator.instance.currentUser.userId,
+      );
+      _messages = ChatStore.getMessages(_currentRoom.roomId);
 
       // 진입 인자에 따라 첫 메시지 자동 전송
       if (args is String && args.isNotEmpty) {
@@ -150,14 +152,14 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
     if (_titleUpdated) return;
     _titleUpdated = true;
     final title = text.length > 20 ? '${text.substring(0, 20)}…' : text;
-    MockDataService.updateRoomTitle(_currentRoom.roomId, title);
+    ChatStore.updateRoomTitle(_currentRoom.roomId, title);
     setState(() {
       _currentRoom = _currentRoom.copyWith(title: title);
     });
   }
 
   void _addMessage(ChatMessage message) {
-    MockDataService.addMessage(_currentRoom.roomId, message);
+    ChatStore.addMessage(_currentRoom.roomId, message);
     setState(() {}); // _messages는 같은 리스트 참조라 setState만 호출
   }
 
@@ -260,7 +262,7 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
         if (event is RoomCreated) {
           _serverRoomId = event.roomId;
           // 다음 진입 시 같은 방으로 라우팅하도록 로컬 ChatRoom 에도 보존
-          MockDataService.updateServerRoomId(
+          ChatStore.updateServerRoomId(
             _currentRoom.roomId,
             event.roomId,
           );
@@ -321,9 +323,9 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
     try {
       final history = await NaengoApi.getRoomHistory(roomId);
       if (!mounted) return;
-      MockDataService.replaceMessages(_currentRoom.roomId, history);
+      ChatStore.replaceMessages(_currentRoom.roomId, history);
       // replaceMessages 가 새 List 인스턴스를 만들므로 참조를 다시 받아야 함.
-      _messages = MockDataService.getMessages(_currentRoom.roomId);
+      _messages = ChatStore.getMessages(_currentRoom.roomId);
       setState(() => _isLoading = false);
       _scrollToBottom();
     } catch (e, st) {

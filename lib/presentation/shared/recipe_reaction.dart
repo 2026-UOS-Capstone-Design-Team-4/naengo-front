@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../data/mock_data_service.dart';
+import '../../data/recipe_reaction_store.dart';
 import '../../models/recipe_item.dart';
 import '../../services/auth_service.dart';
 import '../../services/naengo_api_service.dart';
@@ -25,7 +25,13 @@ mixin RecipeReactionMixin<T extends StatefulWidget> on State<T> {
       recipe.likesCount += nextLiked ? 1 : -1;
     });
     if (recipe.recipeId >= RecipeItem.localOnlyIdThreshold) {
-      MockDataService.notifyLikesChanged();
+      RecipeReactionStore.updateReaction(
+        recipe.recipeId,
+        isLiked: recipe.isLiked,
+        isBookmarked: recipe.isBookmarked,
+        likesCount: recipe.likesCount,
+        scrapCount: recipe.scrapCount,
+      );
       return;
     }
     try {
@@ -36,7 +42,13 @@ mixin RecipeReactionMixin<T extends StatefulWidget> on State<T> {
         recipe.likesCount = stats['likes_count'] ?? recipe.likesCount;
         recipe.scrapCount = stats['scrap_count'] ?? recipe.scrapCount;
       });
-      MockDataService.notifyLikesChanged();
+      RecipeReactionStore.updateReaction(
+        recipe.recipeId,
+        isLiked: recipe.isLiked,
+        isBookmarked: recipe.isBookmarked,
+        likesCount: recipe.likesCount,
+        scrapCount: recipe.scrapCount,
+      );
     } catch (_) {
       if (await syncRecipeFromServer(recipe)) return;
       if (!mounted) return;
@@ -63,7 +75,16 @@ mixin RecipeReactionMixin<T extends StatefulWidget> on State<T> {
       recipe.isBookmarked = nextScrapped;
       recipe.scrapCount += nextScrapped ? 1 : -1;
     });
-    if (recipe.recipeId >= RecipeItem.localOnlyIdThreshold) return;
+    if (recipe.recipeId >= RecipeItem.localOnlyIdThreshold) {
+      RecipeReactionStore.updateReaction(
+        recipe.recipeId,
+        isLiked: recipe.isLiked,
+        isBookmarked: recipe.isBookmarked,
+        likesCount: recipe.likesCount,
+        scrapCount: recipe.scrapCount,
+      );
+      return;
+    }
     try {
       final stats = await NaengoApi.setRecipeScrap(
         recipe.recipeId,
@@ -74,6 +95,13 @@ mixin RecipeReactionMixin<T extends StatefulWidget> on State<T> {
         recipe.likesCount = stats['likes_count'] ?? recipe.likesCount;
         recipe.scrapCount = stats['scrap_count'] ?? recipe.scrapCount;
       });
+      RecipeReactionStore.updateReaction(
+        recipe.recipeId,
+        isLiked: recipe.isLiked,
+        isBookmarked: recipe.isBookmarked,
+        likesCount: recipe.likesCount,
+        scrapCount: recipe.scrapCount,
+      );
     } catch (_) {
       if (await syncRecipeFromServer(recipe)) return;
       if (!mounted) return;
@@ -97,6 +125,13 @@ mixin RecipeReactionMixin<T extends StatefulWidget> on State<T> {
         recipe.likesCount = fresh.likesCount;
         recipe.scrapCount = fresh.scrapCount;
       });
+      RecipeReactionStore.updateReaction(
+        recipe.recipeId,
+        isLiked: recipe.isLiked,
+        isBookmarked: recipe.isBookmarked,
+        likesCount: recipe.likesCount,
+        scrapCount: recipe.scrapCount,
+      );
       return true;
     } catch (_) {
       return false;

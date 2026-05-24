@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/app_export.dart';
-import '../../../data/mock_data_service.dart';
+import '../../../data/recipe_reaction_store.dart';
 import '../../../models/recipe_item.dart';
 import '../../../services/auth_service.dart';
+import '../../../services/naengo_api_service.dart';
 import '../../../widgets/naengo_snackbar.dart';
 
 class RecipeCardWidget extends StatefulWidget {
@@ -20,25 +21,65 @@ class _RecipeCardWidgetState extends State<RecipeCardWidget> {
   @override
   void initState() {
     super.initState();
-    MockDataService.likesNotifier.addListener(_onLikesChanged);
+    RecipeReactionStore.reactionNotifier.addListener(_onReactionChanged);
   }
 
   @override
   void dispose() {
-    MockDataService.likesNotifier.removeListener(_onLikesChanged);
+    RecipeReactionStore.reactionNotifier.removeListener(_onReactionChanged);
     super.dispose();
   }
 
-  void _onLikesChanged() => setState(() {});
+  void _onReactionChanged() {
+    final cached = RecipeReactionStore.getReaction(widget.recipe.recipeId);
+    if (cached != null && mounted) {
+      setState(() {
+        widget.recipe.isLiked = cached.isLiked;
+        widget.recipe.isBookmarked = cached.isBookmarked;
+        widget.recipe.likesCount = cached.likesCount;
+        widget.recipe.scrapCount = cached.scrapCount;
+      });
+    }
+  }
 
-  void _toggleLike() {
+  Future<void> _toggleLike() async {
     if (!AuthServiceLocator.instance.isLoggedIn) {
       NaengoSnackBar.show(context, '로그인 후 이용할 수 있어요.');
       return;
     }
-    widget.recipe.isLiked = !widget.recipe.isLiked;
-    widget.recipe.likesCount += widget.recipe.isLiked ? 1 : -1;
-    MockDataService.notifyLikesChanged();
+    if (!widget.recipe.isOfficialRecipe) return;
+
+    final nextLiked = !widget.recipe.isLiked;
+    final prevLiked = widget.recipe.isLiked;
+    final prevLikes = widget.recipe.likesCount;
+
+    setState(() {
+      widget.recipe.isLiked = nextLiked;
+      widget.recipe.likesCount += nextLiked ? 1 : -1;
+    });
+
+    try {
+      final stats = await NaengoApi.setRecipeLike(widget.recipe.recipeId, liked: nextLiked);
+      if (!mounted) return;
+      setState(() {
+        widget.recipe.likesCount = stats['likes_count'] ?? widget.recipe.likesCount;
+        widget.recipe.scrapCount = stats['scrap_count'] ?? widget.recipe.scrapCount;
+      });
+      RecipeReactionStore.updateReaction(
+        widget.recipe.recipeId,
+        isLiked: widget.recipe.isLiked,
+        isBookmarked: widget.recipe.isBookmarked,
+        likesCount: widget.recipe.likesCount,
+        scrapCount: widget.recipe.scrapCount,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        widget.recipe.isLiked = prevLiked;
+        widget.recipe.likesCount = prevLikes;
+      });
+      NaengoSnackBar.show(context, '좋아요 변경에 실패했어요.');
+    }
   }
 
   @override
@@ -109,7 +150,7 @@ class _RecipeCardWidgetState extends State<RecipeCardWidget> {
                   ),
                   SizedBox(height: 2.h),
                   GestureDetector(
-                    onTap: _toggleLike,
+                    onTap: () => _toggleLike(),
                     behavior: HitTestBehavior.opaque,
                     child: Row(
                       children: [
