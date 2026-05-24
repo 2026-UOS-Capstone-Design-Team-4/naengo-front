@@ -1,55 +1,78 @@
+class UserIdentity {
+  final int id;
+  final String provider; // 'KAKAO' | 'GOOGLE' | 'NAVER' | 'APPLE'
+  final String? email;
+  final DateTime createdAt;
+
+  const UserIdentity({
+    required this.id,
+    required this.provider,
+    this.email,
+    required this.createdAt,
+  });
+
+  factory UserIdentity.fromJson(Map<String, dynamic> j) => UserIdentity(
+        id: j['id'] as int,
+        provider: j['provider'] as String,
+        email: j['email'] as String?,
+        createdAt: DateTime.parse(j['created_at'] as String),
+      );
+}
+
 class AppUser {
-  final int userId;       // user_id SERIAL PRIMARY KEY
-  final String email;     // email VARCHAR(255)
-  final String nickname;  // nickname VARCHAR(50)
-  final String role;      // 'USER' | 'ADMIN'
-  final bool isActive;    // is_active BOOLEAN (탈퇴·이메일 인증 여부)
-  final bool isBlocked;   // is_blocked BOOLEAN
-  final String provider;  // 'LOCAL' | 'KAKAO' 
-  final String? providerId;       // provider_id
-  final String? profileImageUrl;  // profile_image_url (백엔드 컬럼 추가 예정)
-  final DateTime createdAt;       // created_at
+  final int userId;
+  final String? username;
+  final String nickname;
+  final String role; // 'USER' | 'ADMIN'
+  final bool isActive;
+  final bool isBlocked;
+  final List<UserIdentity> userIdentities;
+  final String? profileImageUrl;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
 
   const AppUser({
     required this.userId,
-    required this.email,
+    this.username,
     required this.nickname,
     this.role = 'USER',
     this.isActive = true,
     this.isBlocked = false,
-    this.provider = 'LOCAL',
-    this.providerId,
+    this.userIdentities = const [],
     this.profileImageUrl,
     required this.createdAt,
+    this.updatedAt,
   });
 
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
         userId: j['user_id'] as int,
-        // API v5: email → username. 두 키 모두 허용 (하위 호환)
-        email: j['username'] as String? ?? j['email'] as String? ?? '',
+        username: j['username'] as String?,
         nickname: j['nickname'] as String,
         role: j['role'] as String? ?? 'USER',
         isActive: j['is_active'] as bool? ?? true,
         isBlocked: j['is_blocked'] as bool? ?? false,
-        provider: j['provider'] as String? ?? 'LOCAL',
-        providerId: j['provider_id'] as String?,
+        userIdentities: ((j['user_identities'] as List?) ?? const [])
+            .map((e) => UserIdentity.fromJson(e as Map<String, dynamic>))
+            .toList(growable: false),
         profileImageUrl: j['profile_image_url'] as String?,
-        // auth 응답(signup/login)에는 created_at이 없으므로 null-safe 처리
         createdAt: j['created_at'] != null
             ? DateTime.parse(j['created_at'] as String)
             : DateTime.now(),
+        updatedAt: j['updated_at'] != null
+            ? DateTime.tryParse(j['updated_at'] as String)
+            : null,
       );
 
   AppUser copyWith({String? nickname, String? profileImageUrl}) => AppUser(
         userId: userId,
-        email: email,
+        username: username,
         nickname: nickname ?? this.nickname,
         role: role,
         isActive: isActive,
         isBlocked: isBlocked,
-        provider: provider,
-        providerId: providerId,
+        userIdentities: userIdentities,
         profileImageUrl: profileImageUrl ?? this.profileImageUrl,
         createdAt: createdAt,
+        updatedAt: updatedAt,
       );
 }

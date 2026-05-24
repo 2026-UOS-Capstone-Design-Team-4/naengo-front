@@ -11,6 +11,11 @@ import '../models/recipe.dart';
 import '../models/user.dart';
 import 'auth_service.dart';
 
+/// 취향 입력이 사용자 정보(음식 선호·알레르기·식단·조리 습관)가 아닐 때 서버가 반환하는 422 에러.
+class ProfileInputNotUserInfoException implements Exception {
+  const ProfileInputNotUserInfoException();
+}
+
 /// SSE 응답을 파싱한 이벤트 타입.
 sealed class ChatEvent {}
 
@@ -60,8 +65,7 @@ class NaengoApi {
     defaultValue: '',
   );
 
-  /// Spring API 서버 URL (인증·사용자·레시피). `--dart-define=NAENGO_SPRING_BASE=...` 로 변경 가능.
-  static const String springBase = String.fromEnvironment(
+  static const String _authBase = String.fromEnvironment(
     'NAENGO_SPRING_BASE',
     defaultValue: '',
   );
@@ -70,8 +74,9 @@ class NaengoApi {
   /// [kakaoAccessToken]: 카카오 SDK에서 받은 access_token.
   /// 반환: { user_id, nickname, role, access_token }
   static Future<Map<String, dynamic>> socialLoginKakao(
-      String kakaoAccessToken) async {
-    final uri = Uri.parse('$springBase/api/v1/auth/social/kakao');
+    String kakaoAccessToken,
+  ) async {
+    final uri = Uri.parse('$_authBase/api/v1/auth/social/kakao');
     final r = await http.post(
       uri,
       headers: {'Content-Type': 'application/json'},
@@ -81,13 +86,15 @@ class NaengoApi {
       return jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
     }
     throw HttpException(
-        'socialLoginKakao ${r.statusCode}: ${r.body}', uri: uri);
+      'socialLoginKakao ${r.statusCode}: ${r.body}',
+      uri: uri,
+    );
   }
 
   /// 로그아웃 (`POST /api/v1/auth/logout`).
   static Future<void> postLogout() async {
     try {
-      final uri = Uri.parse('$springBase/api/v1/auth/logout');
+      final uri = Uri.parse('$_authBase/api/v1/auth/logout');
       await http.post(uri, headers: _authHeaders());
     } catch (_) {
       // stateless JWT라 서버 실패해도 로컬 토큰 삭제로 충분
@@ -97,10 +104,10 @@ class NaengoApi {
   /// 인증이 필요한 API 호출에 쓸 헤더.
   /// 로그인 상태면 Authorization 헤더가 자동으로 붙음.
   static Map<String, String> _authHeaders() => {
-        'Content-Type': 'application/json',
-        if (AuthServiceLocator.instance.token != null)
-          'Authorization': 'Bearer ${AuthServiceLocator.instance.token}',
-      };
+    'Content-Type': 'application/json',
+    if (AuthServiceLocator.instance.token != null)
+      'Authorization': 'Bearer ${AuthServiceLocator.instance.token}',
+  };
 
   /// 새 채팅방 생성 + 첫 메시지 (SSE 스트림).
   ///
@@ -168,10 +175,7 @@ class NaengoApi {
     final uri = Uri.parse('$baseUrl/api/v1/chat/rooms');
     final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
-      throw HttpException(
-        'listRooms ${r.statusCode}: ${r.body}',
-        uri: uri,
-      );
+      throw HttpException('listRooms ${r.statusCode}: ${r.body}', uri: uri);
     }
     final list = jsonDecode(utf8.decode(r.bodyBytes)) as List;
     return list
@@ -210,10 +214,7 @@ class NaengoApi {
     final uri = Uri.parse('$baseUrl/api/v1/chat/rooms/$roomId');
     final r = await http.delete(uri, headers: _authHeaders());
     if (r.statusCode == 200 || r.statusCode == 404) return;
-    throw HttpException(
-      'deleteRoom ${r.statusCode}: ${r.body}',
-      uri: uri,
-    );
+    throw HttpException('deleteRoom ${r.statusCode}: ${r.body}', uri: uri);
   }
 
   /// `ChatRoomResponse` → 로컬 `ChatRoom` 변환.
@@ -252,18 +253,15 @@ class NaengoApi {
   /// [cursor] 가 있으면 해당 커서 이후 항목을 반환 (cursor 기반 페이지네이션).
   /// 반환값: `(items, nextCursor, hasNext)`
   static Future<({List<Recipe> items, String? nextCursor, bool hasNext})>
-      getRecipes({
-    String sort = 'latest',
-    int limit = 20,
-    String? cursor,
-  }) async {
+  getRecipes({String sort = 'latest', int limit = 20, String? cursor}) async {
     final params = <String, String>{
       'sort': sort,
       'limit': limit.toString(),
       if (cursor != null) 'cursor': cursor,
     };
-    final uri =
-        Uri.parse('$baseUrl/api/v1/recipes').replace(queryParameters: params);
+    final uri = Uri.parse(
+      '$baseUrl/api/v1/recipes',
+    ).replace(queryParameters: params);
     final r = await http.get(uri);
     if (r.statusCode != 200) {
       throw HttpException('getRecipes ${r.statusCode}: ${r.body}', uri: uri);
@@ -295,16 +293,14 @@ class NaengoApi {
 
   /// 내가 스크랩한 레시피 목록 (`GET /api/v1/recipes/scraps`).
   static Future<({List<Recipe> items, String? nextCursor, bool hasNext})>
-      getMyScraps({
-    int limit = 20,
-    String? cursor,
-  }) async {
+  getMyScraps({int limit = 20, String? cursor}) async {
     final params = <String, String>{
       'limit': limit.toString(),
       if (cursor != null) 'cursor': cursor,
     };
-    final uri = Uri.parse('$baseUrl/api/v1/recipes/scraps')
-        .replace(queryParameters: params);
+    final uri = Uri.parse(
+      '$baseUrl/api/v1/recipes/scraps',
+    ).replace(queryParameters: params);
     final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException('getMyScraps ${r.statusCode}: ${r.body}', uri: uri);
@@ -326,21 +322,16 @@ class NaengoApi {
     int recipeId, {
     required bool liked,
   }) =>
-      _toggleRecipeReaction(
-        recipeId: recipeId,
-        kind: 'likes',
-        enabled: liked,
-      );
+      _toggleRecipeReaction(recipeId: recipeId, kind: 'likes', enabled: liked);
 
   static Future<Map<String, int>> setRecipeScrap(
     int recipeId, {
     required bool scrapped,
-  }) =>
-      _toggleRecipeReaction(
-        recipeId: recipeId,
-        kind: 'scraps',
-        enabled: scrapped,
-      );
+  }) => _toggleRecipeReaction(
+    recipeId: recipeId,
+    kind: 'scraps',
+    enabled: scrapped,
+  );
 
   static Future<Map<String, int>> _toggleRecipeReaction({
     required int recipeId,
@@ -380,7 +371,10 @@ class NaengoApi {
     final streamed = await request.send();
     final r = await http.Response.fromStream(streamed);
     if (r.statusCode != 201) {
-      throw HttpException('submitPendingRecipe ${r.statusCode}: ${r.body}', uri: uri);
+      throw HttpException(
+        'submitPendingRecipe ${r.statusCode}: ${r.body}',
+        uri: uri,
+      );
     }
     final json = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
     return json['user_recipe_id'] as int? ?? json['pending_recipe_id'] as int;
@@ -391,7 +385,10 @@ class NaengoApi {
     final uri = Uri.parse('$baseUrl/api/v1/user-recipes');
     final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
-      throw HttpException('getMyPendingRecipes ${r.statusCode}: ${r.body}', uri: uri);
+      throw HttpException(
+        'getMyPendingRecipes ${r.statusCode}: ${r.body}',
+        uri: uri,
+      );
     }
     final list = jsonDecode(utf8.decode(r.bodyBytes)) as List;
     return list.map((e) => (e as Map).cast<String, dynamic>()).toList();
@@ -412,7 +409,10 @@ class NaengoApi {
     final uri = Uri.parse('$baseUrl/api/v1/user-recipes/$id');
     final r = await http.delete(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
-      throw HttpException('deletePendingRecipe ${r.statusCode}: ${r.body}', uri: uri);
+      throw HttpException(
+        'deletePendingRecipe ${r.statusCode}: ${r.body}',
+        uri: uri,
+      );
     }
   }
 
@@ -420,7 +420,7 @@ class NaengoApi {
 
   /// 내 정보 조회 (`GET /api/v1/users/me`).
   static Future<AppUser> getMe() async {
-    final uri = Uri.parse('$springBase/api/v1/users/me');
+    final uri = Uri.parse('$baseUrl/api/v1/users/me');
     final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException('getMe ${r.statusCode}: ${r.body}', uri: uri);
@@ -432,7 +432,7 @@ class NaengoApi {
 
   /// 닉네임 수정 (`PATCH /api/v1/users/me`).
   static Future<AppUser> patchNickname(String nickname) async {
-    final uri = Uri.parse('$springBase/api/v1/users/me');
+    final uri = Uri.parse('$baseUrl/api/v1/users/me');
     final r = await http.patch(
       uri,
       headers: _authHeaders(),
@@ -449,11 +449,14 @@ class NaengoApi {
   /// 내 프로필 조회 — user_input 배열만 반환 (`GET /api/v1/users/me/profile`).
   /// 프로필이 아직 없으면(404) 빈 배열 반환.
   static Future<List<String>> getProfileInput() async {
-    final uri = Uri.parse('$springBase/api/v1/users/me/profile');
+    final uri = Uri.parse('$baseUrl/api/v1/users/me/profile');
     final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode == 404) return [];
     if (r.statusCode != 200) {
-      throw HttpException('getProfileInput ${r.statusCode}: ${r.body}', uri: uri);
+      throw HttpException(
+        'getProfileInput ${r.statusCode}: ${r.body}',
+        uri: uri,
+      );
     }
     final json = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
     return (json['user_input'] as List<dynamic>?)
@@ -462,41 +465,37 @@ class NaengoApi {
         [];
   }
 
-  /// 취향 문장 추가 (`POST /api/v1/users/me/profile`).
-  /// 서버가 AI로 문체 정리 후 한 문장으로 저장.
-  static Future<List<String>> appendProfileInput(String text) async {
-    final uri = Uri.parse('$springBase/api/v1/users/me/profile');
+  static Future<void> appendProfileInput(String text) async {
+    final uri = Uri.parse('$baseUrl/api/v1/users/me/profile');
     final r = await http.post(
       uri,
       headers: _authHeaders(),
       body: jsonEncode({'text': text}),
     );
-    if (r.statusCode != 200) {
-      throw HttpException('appendProfileInput ${r.statusCode}: ${r.body}', uri: uri);
+    if (r.statusCode == 422) {
+      throw const ProfileInputNotUserInfoException();
     }
-    final json = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
-    return (json['user_input'] as List<dynamic>?)
-            ?.map((e) => e as String)
-            .toList() ??
-        [];
+    if (r.statusCode >= 300) {
+      throw HttpException(
+        'appendProfileInput ${r.statusCode}: ${r.body}',
+        uri: uri,
+      );
+    }
   }
 
-  /// 취향 문장 삭제 (`DELETE /api/v1/users/me/profile`).
-  static Future<List<String>> deleteProfileInput(String text) async {
-    final uri = Uri.parse('$springBase/api/v1/users/me/profile');
+  static Future<void> deleteProfileInput(String text) async {
+    final uri = Uri.parse('$baseUrl/api/v1/users/me/profile');
     final r = await http.delete(
       uri,
       headers: _authHeaders(),
       body: jsonEncode({'text': text}),
     );
-    if (r.statusCode != 200) {
-      throw HttpException('deleteProfileInput ${r.statusCode}: ${r.body}', uri: uri);
+    if (r.statusCode >= 300) {
+      throw HttpException(
+        'deleteProfileInput ${r.statusCode}: ${r.body}',
+        uri: uri,
+      );
     }
-    final json = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
-    return (json['user_input'] as List<dynamic>?)
-            ?.map((e) => e as String)
-            .toList() ??
-        [];
   }
 
   /// SSE 스트리밍 내부 구현.
@@ -529,9 +528,10 @@ class NaengoApi {
         return;
       }
 
-      await for (final line in response.stream
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())) {
+      await for (final line
+          in response.stream
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())) {
         if (line.isEmpty) continue;
 
         if (line.startsWith('event: ')) {
@@ -552,7 +552,9 @@ class NaengoApi {
               }
             } else if (json is List) {
               final recipes = json
-                  .map((r) => Recipe.fromJson((r as Map).cast<String, dynamic>()))
+                  .map(
+                    (r) => Recipe.fromJson((r as Map).cast<String, dynamic>()),
+                  )
                   .toList();
               yield RecipesReceived(recipes);
             }

@@ -101,7 +101,11 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
 
       final request = RecipeSubmitRequest(
         title: title,
-        content: content,
+        steps: content
+            .split('\n')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList(),
         difficulty: _selectedDifficulty!,
         description: description,
         ingredientsRaw: ingredients,

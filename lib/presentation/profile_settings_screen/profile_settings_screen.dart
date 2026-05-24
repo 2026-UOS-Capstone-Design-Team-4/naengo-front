@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
 import '../../services/auth_service.dart';
+import '../../services/naengo_api_service.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/naengo_snackbar.dart';
 
@@ -82,12 +83,12 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   // ── 취향 편집 ───────────────────────────────────────────
 
   void _startEditingPreference() {
+    _userInputController.text = _auth.currentProfile.userInput.join('\n');
     setState(() => _isEditingPreference = true);
   }
 
   void _cancelEditingPreference() {
-    _userInputController.text =
-        _auth.currentProfile.userInput.join('\n');
+    _userInputController.text = _auth.currentProfile.userInput.join('\n');
     setState(() => _isEditingPreference = false);
   }
 
@@ -101,11 +102,16 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     try {
       await _auth.updateUserInput(lines);
       if (!mounted) return;
+      _userInputController.text = _auth.currentProfile.userInput.join('\n');
       setState(() {
         _isEditingPreference = false;
         _isSavingPreference = false;
       });
       NaengoSnackBar.show(context, '취향이 저장되었어요.');
+    } on ProfileInputNotUserInfoException {
+      if (!mounted) return;
+      setState(() => _isSavingPreference = false);
+      NaengoSnackBar.show(context, '음식 선호, 알레르기, 식단 정보를 입력해주세요.');
     } catch (e) {
       debugPrint('[ProfileSettings] 취향 저장 실패: $e');
       if (!mounted) return;
@@ -136,13 +142,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               await _auth.logout();
               if (!mounted) return;
               // screen context로 navigate (dialog context는 이미 무효)
-              Navigator.of(context).pushNamedAndRemoveUntil(
-                AppRoutes.mainShell,
-                (route) => false,
-              );
+              Navigator.of(
+                context,
+              ).pushNamedAndRemoveUntil(AppRoutes.mainShell, (route) => false);
             },
-            child: Text('로그아웃',
-                style: TextStyle(color: appTheme.mainUI)),
+            child: Text('로그아웃', style: TextStyle(color: appTheme.mainUI)),
           ),
         ],
       ),
@@ -177,28 +181,27 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              NaengoAppBar(
-                showBackArrow: true,
-                title: '개인정보 설정',
-              ),
+              NaengoAppBar(showBackArrow: true, title: '개인정보 설정'),
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : ListView(
                         padding: EdgeInsets.symmetric(
-                            horizontal: 16.h, vertical: 8.h),
+                          horizontal: 16.h,
+                          vertical: 8.h,
+                        ),
                         children: _auth.isLoggedIn
                             ? [
                                 _buildProfileCard(
-                                    user.nickname, user.profileImageUrl),
+                                  user.nickname,
+                                  user.profileImageUrl,
+                                ),
                                 SizedBox(height: 20.h),
                                 _buildPreferenceSection(),
                                 SizedBox(height: 20.h),
                                 _buildActionSection(),
                               ]
-                            : [
-                                _buildLoginCard(),
-                              ],
+                            : [_buildLoginCard()],
                       ),
               ),
             ],
@@ -232,8 +235,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           Expanded(
             child: Text(
               '로그인이 필요해요',
-              style: TextStyleHelper.instance.title18BoldNanumSquareAc
-                  .copyWith(color: Colors.white),
+              style: TextStyleHelper.instance.title18BoldNanumSquareAc.copyWith(
+                color: Colors.white,
+              ),
             ),
           ),
           FilledButton(
@@ -248,13 +252,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(30.h),
               ),
-              padding:
-                  EdgeInsets.symmetric(horizontal: 16.h, vertical: 8.h),
+              padding: EdgeInsets.symmetric(horizontal: 16.h, vertical: 8.h),
             ),
             child: Text(
               '로그인',
-              style: TextStyleHelper.instance.body15BoldNanumSquareAc
-                  .copyWith(color: appTheme.mainUI),
+              style: TextStyleHelper.instance.body15BoldNanumSquareAc.copyWith(
+                color: appTheme.mainUI,
+              ),
             ),
           ),
         ],
@@ -289,8 +293,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           Expanded(
             child: Text(
               nickname,
-              style: TextStyleHelper.instance.title18BoldNanumSquareAc
-                  .copyWith(color: Colors.white),
+              style: TextStyleHelper.instance.title18BoldNanumSquareAc.copyWith(
+                color: Colors.white,
+              ),
             ),
           ),
           // 연필 아이콘만 탭 가능
@@ -337,16 +342,16 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               ),
               SizedBox(width: 4.h),
               GestureDetector(
-                onTap: _isEditingPreference
-                    ? null
-                    : _startEditingPreference,
+                onTap: _isEditingPreference ? null : _startEditingPreference,
                 child: Padding(
                   padding: EdgeInsets.all(4.h),
-                  child: Icon(Icons.edit,
-                      size: 16.h,
-                      color: _isEditingPreference
-                          ? appTheme.disabled
-                          : appTheme.mainUI),
+                  child: Icon(
+                    Icons.edit,
+                    size: 16.h,
+                    color: _isEditingPreference
+                        ? appTheme.disabled
+                        : appTheme.mainUI,
+                  ),
                 ),
               ),
             ],
@@ -372,13 +377,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12.h),
-                borderSide:
-                    BorderSide(color: appTheme.mainUI, width: 1.5),
+                borderSide: BorderSide(color: appTheme.mainUI, width: 1.5),
               ),
               filled: !_isEditingPreference,
               fillColor: appTheme.maximumlight,
-              contentPadding:
-                  EdgeInsets.symmetric(horizontal: 12.h, vertical: 10.h),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12.h,
+                vertical: 10.h,
+              ),
             ),
           ),
           if (_isEditingPreference) ...[
@@ -387,10 +393,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed:
-                      _isSavingPreference ? null : _cancelEditingPreference,
-                  child: Text('취소',
-                      style: TextStyle(color: appTheme.disabled)),
+                  onPressed: _isSavingPreference
+                      ? null
+                      : _cancelEditingPreference,
+                  child: Text('취소', style: TextStyle(color: appTheme.disabled)),
                 ),
                 SizedBox(width: 8.h),
                 FilledButton(
@@ -401,17 +407,20 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       borderRadius: BorderRadius.circular(10.h),
                     ),
                     padding: EdgeInsets.symmetric(
-                        horizontal: 20.h, vertical: 8.h),
+                      horizontal: 20.h,
+                      vertical: 8.h,
+                    ),
                   ),
                   child: _isSavingPreference
                       ? SizedBox(
                           width: 16.h,
                           height: 16.h,
                           child: const CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 2),
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
                         )
-                      : const Text('저장',
-                          style: TextStyle(color: Colors.white)),
+                      : const Text('저장', style: TextStyle(color: Colors.white)),
                 ),
               ],
             ),
@@ -443,19 +452,18 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               '로그아웃',
               style: TextStyleHelper.instance.body15MediumNotoSansKR,
             ),
-            trailing:
-                Icon(Icons.chevron_right, color: appTheme.disabled),
+            trailing: Icon(Icons.chevron_right, color: appTheme.disabled),
             onTap: _onLogout,
           ),
           Divider(height: 1, color: appTheme.maximumlight),
           ListTile(
             title: Text(
               '탈퇴하기',
-              style: TextStyleHelper.instance.body15MediumNotoSansKR
-                  .copyWith(color: appTheme.mainUI),
+              style: TextStyleHelper.instance.body15MediumNotoSansKR.copyWith(
+                color: appTheme.mainUI,
+              ),
             ),
-            trailing:
-                Icon(Icons.chevron_right, color: appTheme.mainUI),
+            trailing: Icon(Icons.chevron_right, color: appTheme.mainUI),
             onTap: _onDeleteAccount,
           ),
         ],
@@ -503,8 +511,7 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: appTheme.background,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.h)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.h)),
       child: Padding(
         padding: EdgeInsets.all(20.h),
         child: Column(
@@ -530,8 +537,7 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
                         ? NetworkImage(widget.profileImageUrl!)
                         : null,
                     child: widget.profileImageUrl == null
-                        ? Icon(Icons.person,
-                            color: appTheme.mainUI, size: 56.h)
+                        ? Icon(Icons.person, color: appTheme.mainUI, size: 56.h)
                         : null,
                   ),
                   Positioned(
@@ -548,8 +554,11 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
                           shape: BoxShape.circle,
                           border: Border.all(color: appTheme.lightbasis),
                         ),
-                        child: Icon(Icons.image_outlined,
-                            color: appTheme.mainUI, size: 18.h),
+                        child: Icon(
+                          Icons.image_outlined,
+                          color: appTheme.mainUI,
+                          size: 18.h,
+                        ),
                       ),
                     ),
                   ),
@@ -571,8 +580,7 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
                   borderSide: BorderSide(color: appTheme.lightbasis),
                 ),
                 focusedBorder: UnderlineInputBorder(
-                  borderSide:
-                      BorderSide(color: appTheme.mainUI, width: 1.5),
+                  borderSide: BorderSide(color: appTheme.mainUI, width: 1.5),
                 ),
                 contentPadding: EdgeInsets.symmetric(vertical: 8.h),
               ),
@@ -594,8 +602,10 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
                       ),
                       padding: EdgeInsets.symmetric(vertical: 12.h),
                     ),
-                    child: const Text('취소',
-                        style: TextStyle(color: Colors.white)),
+                    child: const Text(
+                      '취소',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
                 SizedBox(width: 10.h),
@@ -615,10 +625,14 @@ class _ProfileEditDialogState extends State<_ProfileEditDialog> {
                             width: 16.h,
                             height: 16.h,
                             child: const CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2),
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
                           )
-                        : const Text('수정',
-                            style: TextStyle(color: Colors.white)),
+                        : const Text(
+                            '수정',
+                            style: TextStyle(color: Colors.white),
+                          ),
                   ),
                 ),
               ],

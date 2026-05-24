@@ -1,7 +1,6 @@
 import 'recipe.dart';
 
 class RecipeItem {
-  /// 로컬에서만 사용하는 임시 ID 기준값 (이 값 이상이면 서버 미연동 레시피).
   static const int localOnlyIdThreshold = 9000;
 
   final int recipeId;
@@ -11,7 +10,7 @@ class RecipeItem {
   final List<String> ingredientsList;
   final List<String> cookingSteps;
   final String? imageUrl;
-  final String? videoUrl;
+  final String? sourceUrl;
   final String source;
   final int? authorId;
   final String status;
@@ -22,11 +21,8 @@ class RecipeItem {
   final int? calories;
   final List<String> category;
 
-  // Recipe_Stats
   int likesCount;
   int scrapCount;
-
-  // Derived from Likes / Scraps for current user
   bool isLiked;
   bool isBookmarked;
   final bool isOfficialRecipe;
@@ -39,7 +35,7 @@ class RecipeItem {
     this.ingredientsList = const [],
     this.cookingSteps = const [],
     this.imageUrl,
-    this.videoUrl,
+    this.sourceUrl,
     this.source = 'ADMIN',
     this.authorId,
     this.status = 'APPROVED',
@@ -56,7 +52,6 @@ class RecipeItem {
     this.isOfficialRecipe = true,
   });
 
-  /// 승인된 레시피 API 응답([Recipe])으로부터 생성.
   factory RecipeItem.fromRecipe(Recipe r) => RecipeItem(
         recipeId: r.id,
         title: r.title,
@@ -70,7 +65,7 @@ class RecipeItem {
             .toList(growable: false),
         cookingSteps: r.instructions,
         imageUrl: r.imageUrl,
-        videoUrl: r.videoUrl,
+        sourceUrl: r.sourceUrl,
         source: r.authorType,
         status: 'APPROVED',
         createdAt: r.createdAt ?? DateTime.now(),
@@ -86,8 +81,6 @@ class RecipeItem {
         isOfficialRecipe: true,
       );
 
-  /// 유저 제출 레시피 API 응답(JSON)으로부터 생성.
-  /// API v5: user_recipe_id (이전: pending_recipe_id) — 두 키 모두 허용.
   factory RecipeItem.fromPendingJson(Map<String, dynamic> j) => RecipeItem(
         recipeId: j['user_recipe_id'] as int? ?? j['pending_recipe_id'] as int,
         title: j['title'] as String,
@@ -102,7 +95,7 @@ class RecipeItem {
             .toList(growable: false),
         cookingSteps: _parsePendingSteps(j),
         imageUrl: j['main_image_url'] as String?,
-        videoUrl: j['video_url'] as String?,
+        sourceUrl: j['source_url'] as String?,
         source: 'USER',
         authorId: j['user_id'] as int?,
         status: j['status'] as String? ?? 'PENDING',
@@ -118,7 +111,6 @@ class RecipeItem {
       );
 
   static List<String> _parsePendingSteps(Map<String, dynamic> j) {
-    // UserRecipeResponse: steps[]는 {step_no, instruction, ...} 배열
     final steps = j['steps'] as List?;
     if (steps != null && steps.isNotEmpty) {
       return steps
@@ -126,7 +118,6 @@ class RecipeItem {
           .where((s) => s.isNotEmpty)
           .toList(growable: false);
     }
-    // 구버전 호환
     final instructions = j['instructions'] as List?;
     if (instructions != null) {
       return instructions.map((e) => e as String).toList(growable: false);

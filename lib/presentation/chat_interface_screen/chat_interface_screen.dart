@@ -918,7 +918,6 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
       }).toList(),
       cookingSteps: full.instructions,
       imageUrl: full.imageUrl,
-      videoUrl: full.videoUrl,
       source: full.authorType == 'USER' ? 'USER' : 'STANDARD',
       status: 'APPROVED',
       createdAt: full.createdAt ?? DateTime.now(),

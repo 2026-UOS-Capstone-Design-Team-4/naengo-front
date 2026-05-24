@@ -1,14 +1,31 @@
-/// Naengo 백엔드 (`/api/v1/...`) 가 반환하는 레시피 응답 모델.
-///
-/// SSE `event: recipes` 이벤트의 data 페이로드, `GET /chat/rooms/{id}` 의
-/// `recipes` 필드, `GET /recipes?ids=...` 응답 등에서 동일한 구조로 사용됨.
+class RecipeStep {
+  final int stepNo;
+  final String instruction;
+  final String? imageUrl;
+  final String? aiImageUrl;
+
+  const RecipeStep({
+    required this.stepNo,
+    required this.instruction,
+    this.imageUrl,
+    this.aiImageUrl,
+  });
+
+  factory RecipeStep.fromJson(Map<String, dynamic> json) => RecipeStep(
+        stepNo: json['step_no'] as int? ?? 0,
+        instruction: json['instruction'] as String? ?? '',
+        imageUrl: json['image_url'] as String?,
+        aiImageUrl: json['ai_image_url'] as String?,
+      );
+}
+
 class Recipe {
   final int id;
   final String title;
   final String description;
   final List<IngredientItem> ingredients;
   final String ingredientsRaw;
-  final List<String> instructions;
+  final List<RecipeStep> steps;
   final double servings;
   final int cookingTime;
   final int? calories;
@@ -16,9 +33,8 @@ class Recipe {
   final List<String> category;
   final List<String> tags;
   final List<String> tips;
-  final String? videoUrl;
   final String? imageUrl;
-  final String authorType; // 'ADMIN' | 'USER'
+  final String authorType; // 'ADMIN' | 'USER' | 'SOURCE'
   final String? summary;
   final List<String> warnings;
   final String? sourceUrl;
@@ -34,7 +50,7 @@ class Recipe {
     required this.description,
     required this.ingredients,
     required this.ingredientsRaw,
-    required this.instructions,
+    required this.steps,
     required this.servings,
     required this.cookingTime,
     this.calories,
@@ -42,7 +58,6 @@ class Recipe {
     required this.category,
     required this.tags,
     required this.tips,
-    this.videoUrl,
     this.imageUrl,
     required this.authorType,
     this.summary,
@@ -55,6 +70,9 @@ class Recipe {
     this.createdAt,
   });
 
+  List<String> get instructions =>
+      steps.map((s) => s.instruction).where((s) => s.isNotEmpty).toList();
+
   factory Recipe.fromJson(Map<String, dynamic> json) {
     return Recipe(
       id: json['id'] as int,
@@ -63,14 +81,14 @@ class Recipe {
       ingredients: ((json['ingredients'] as List?) ?? const [])
           .map((e) => IngredientItem.fromJson(e as Map<String, dynamic>))
           .toList(growable: false),
-      ingredientsRaw: json['ingredients_raw'] as String? ??
+      ingredientsRaw:
+          json['ingredients_raw'] as String? ??
           ((json['ingredients'] as List?) ?? const [])
               .map((e) => (e as Map<String, dynamic>)['name'] as String? ?? '')
               .where((n) => n.isNotEmpty)
               .join(', '),
-      instructions: ((json['steps'] as List?) ?? const [])
-          .map((e) => (e as Map<String, dynamic>)['instruction'] as String? ?? '')
-          .where((s) => s.isNotEmpty)
+      steps: ((json['steps'] as List?) ?? const [])
+          .map((e) => RecipeStep.fromJson(e as Map<String, dynamic>))
           .toList(growable: false),
       servings: (json['servings'] as num?)?.toDouble() ?? 0,
       cookingTime: json['cooking_time_minutes'] as int? ?? 0,
@@ -85,11 +103,12 @@ class Recipe {
       tips: ((json['tips'] as List?) ?? const [])
           .map((e) => e as String)
           .toList(growable: false),
-      videoUrl: json['video_url'] as String?,
       imageUrl: json['main_image_url'] as String?,
       authorType: json['author_type'] as String? ?? 'ADMIN',
       summary: json['summary'] as String?,
-      warnings: ((json['warnings'] as List?) ?? const []).map((e) => e as String).toList(growable: false),
+      warnings: ((json['warnings'] as List?) ?? const [])
+          .map((e) => e as String)
+          .toList(growable: false),
       sourceUrl: json['source_url'] as String?,
       likesCount: json['likes_count'] as int? ?? 0,
       scrapCount: json['scrap_count'] as int? ?? 0,
@@ -102,7 +121,6 @@ class Recipe {
   }
 }
 
-/// 레시피 안의 개별 재료. 백엔드 IngredientItem 스키마 1:1 매핑.
 class IngredientItem {
   final String name;
   final String amount;

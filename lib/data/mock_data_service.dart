@@ -22,11 +22,10 @@ class MockDataService {
   // ──────────────────────────────────────────────
   static AppUser currentUser = AppUser(
     userId: 1,
-    email: 'test@naengo.com',
+    username: 'test_user',
     nickname: '냉장고지기',
     role: 'USER',
     isActive: true,
-    provider: 'LOCAL',
     createdAt: DateTime(2025, 1, 10),
   );
 

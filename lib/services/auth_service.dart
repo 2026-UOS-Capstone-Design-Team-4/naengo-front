@@ -64,7 +64,6 @@ class RealAuthService implements AuthService {
       _user ??
       AppUser(
         userId: 0,
-        email: '',
         nickname: '게스트',
         createdAt: DateTime.now(),
       );
@@ -110,7 +109,6 @@ class RealAuthService implements AuthService {
       'user_id': json['user_id'],
       'nickname': json['nickname'],
       'role': json['role'] ?? 'USER',
-      'provider': 'KAKAO',
       'is_active': true,
     });
 
@@ -157,14 +155,13 @@ class RealAuthService implements AuthService {
   Future<void> updateUserInput(List<String> inputs) async {
     final toDelete = _userInput.where((s) => !inputs.contains(s)).toList();
     final toAdd = inputs.where((s) => !_userInput.contains(s)).toList();
-    List<String> latest = _userInput;
     for (final text in toDelete) {
-      latest = await NaengoApi.deleteProfileInput(text);
+      await NaengoApi.deleteProfileInput(text);
     }
     for (final text in toAdd) {
-      latest = await NaengoApi.appendProfileInput(text);
+      await NaengoApi.appendProfileInput(text);
     }
-    _userInput = latest;
+    _userInput = await NaengoApi.getProfileInput();
   }
 
   // ── 로그아웃 ────────────────────────────────────────────
