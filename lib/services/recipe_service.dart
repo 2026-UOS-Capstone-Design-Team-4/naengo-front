@@ -5,7 +5,6 @@ import 'naengo_api_service.dart';
 
 abstract class RecipeService {
   Future<RecipeItem> submitRecipe(RecipeSubmitRequest request);
-  List<RecipeItem> getMyRecipes();
   Future<void> deleteMyRecipe(int recipeId);
 }
 
@@ -41,9 +40,6 @@ class RealRecipeService implements RecipeService {
     });
     return recipe;
   }
-
-  @override
-  List<RecipeItem> getMyRecipes() => [];
 
   @override
   Future<void> deleteMyRecipe(int recipeId) async {
