@@ -32,9 +32,9 @@ class MockRecipeService implements RecipeService {
       'status': 'PENDING',
       'created_at': DateTime.now().toIso8601String(),
       'difficulty': request.difficulty,
-      'cooking_time': request.cookingTime,
+      'cooking_time_minutes': request.cookingTime,
       'servings': request.servings,
-      'calories': request.calories,
+      'kcal_per_serving': request.calories,
       'category': request.category,
     });
 
@@ -54,7 +54,10 @@ class MockRecipeService implements RecipeService {
 class RealRecipeService implements RecipeService {
   @override
   Future<RecipeItem> submitRecipe(RecipeSubmitRequest request) async {
-    final id = await NaengoApi.submitPendingRecipe(request.toJson());
+    final id = await NaengoApi.submitPendingRecipe(
+      request.toJson(),
+      mainImage: request.mainImage,
+    );
     final recipe = RecipeItem.fromPendingJson({
       'user_recipe_id': id,
       'title': request.title,
@@ -68,9 +71,9 @@ class RealRecipeService implements RecipeService {
       'status': 'PENDING',
       'created_at': DateTime.now().toIso8601String(),
       'difficulty': request.difficulty,
-      'cooking_time': request.cookingTime,
+      'cooking_time_minutes': request.cookingTime,
       'servings': request.servings,
-      'calories': request.calories,
+      'kcal_per_serving': request.calories,
       'category': request.category,
     });
     MockDataService.notifyRecipesChanged();

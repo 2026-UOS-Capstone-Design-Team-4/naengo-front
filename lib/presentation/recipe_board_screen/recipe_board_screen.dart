@@ -168,6 +168,14 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
       } catch (e) {
         debugPrint('[RecipeBoard] getRecipe 실패: $e');
       }
+    } else if (_tab == _Tab.mine) {
+      try {
+        detailRecipe = RecipeItem.fromPendingJson(
+          await NaengoApi.getUserRecipe(recipe.recipeId),
+        );
+      } catch (e) {
+        debugPrint('[RecipeBoard] getUserRecipe 실패: $e');
+      }
     }
     if (!mounted) return;
     await Navigator.push(

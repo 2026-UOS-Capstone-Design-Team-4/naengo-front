@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/app_export.dart';
 import '../../models/recipe_submit_request.dart';
@@ -28,6 +31,7 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
   String? _selectedDifficulty;
   bool _isDifficultyDropdownOpen = false;
 
+  XFile? _mainImage;
   bool _isSubmitting = false;
 
   @override
@@ -113,6 +117,7 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
         servings: servings,
         calories: caloriesRaw.isEmpty ? null : int.tryParse(caloriesRaw),
         category: category,
+        mainImage: _mainImage,
       );
 
       await _recipeService.submitRecipe(request);
@@ -126,6 +131,28 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
       NaengoSnackBar.show(context,'등록에 실패했어요. 다시 시도해주세요.');
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  // ── 이미지 선택 ────────────────────────────────────────
+
+  bool _isPickingImage = false;
+
+  Future<void> _pickMainImage() async {
+    if (_isPickingImage) return;
+    _isPickingImage = true;
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1920,
+      );
+      if (picked != null && mounted) {
+        setState(() => _mainImage = picked);
+      }
+    } finally {
+      _isPickingImage = false;
     }
   }
 
@@ -157,6 +184,8 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
                   padding:
                       EdgeInsets.symmetric(horizontal: 16.h, vertical: 20.h),
                   children: [
+                    _buildMainImageSection(),
+                    SizedBox(height: 20.h),
                     _buildTitleField(),
                     SizedBox(height: 20.h),
                     _buildSection(
@@ -439,6 +468,89 @@ class _RecipeWriteScreenState extends State<RecipeWriteScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  // ── 대표 이미지 선택 ───────────────────────────────────
+
+  Widget _buildMainImageSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '대표 이미지',
+          style: TextStyleHelper.instance.body15BoldNanumSquareAc
+              .copyWith(color: appTheme.mainUI),
+        ),
+        SizedBox(height: 8.h),
+        _mainImage == null
+            ? GestureDetector(
+                onTap: _pickMainImage,
+                child: Container(
+                  width: double.infinity,
+                  height: 160.h,
+                  decoration: BoxDecoration(
+                    color: appTheme.verylight,
+                    borderRadius: BorderRadius.circular(12.h),
+                    border: Border.all(
+                      color: appTheme.lightbasis,
+                      width: 1.5,
+                      style: BorderStyle.solid,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.camera_alt_outlined,
+                        size: 32.h,
+                        color: appTheme.lightbasis,
+                      ),
+                      SizedBox(height: 8.h),
+                      Text(
+                        '대표 이미지 추가',
+                        style: TextStyleHelper
+                            .instance.body15RegularNanumSquareAc
+                            .copyWith(color: appTheme.lightbasis),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12.h),
+                    child: Image.file(
+                      File(_mainImage!.path),
+                      width: double.infinity,
+                      height: 160.h,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned(
+                    top: 8.h,
+                    right: 8.h,
+                    child: GestureDetector(
+                      onTap: () => setState(() => _mainImage = null),
+                      child: Container(
+                        width: 28.h,
+                        height: 28.h,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 16.h,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+      ],
     );
   }
 

@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
 import '../models/chat_message.dart';
 import '../models/chat_room.dart';
@@ -360,7 +361,11 @@ class NaengoApi {
 
   /// 레시피 제출 (`POST /api/v1/user-recipes`, multipart/form-data).
   /// [payload]: 레시피 데이터 Map — `payload` 필드에 JSON 문자열로 전송.
-  static Future<int> submitPendingRecipe(Map<String, dynamic> payload) async {
+  /// [mainImage]: 대표 이미지 (선택, jpeg/png/webp, max 10MB).
+  static Future<int> submitPendingRecipe(
+    Map<String, dynamic> payload, {
+    XFile? mainImage,
+  }) async {
     final uri = Uri.parse('$baseUrl/api/v1/user-recipes');
     final request = http.MultipartRequest('POST', uri);
     if (AuthServiceLocator.instance.token != null) {
@@ -368,6 +373,12 @@ class NaengoApi {
           'Bearer ${AuthServiceLocator.instance.token}';
     }
     request.fields['payload'] = jsonEncode(payload);
+    // 스토리지 설정 후 이미지 업로드 활성화
+    // if (mainImage != null) {
+    //   request.files.add(
+    //     await http.MultipartFile.fromPath('main_image', mainImage.path),
+    //   );
+    // }
     final streamed = await request.send();
     final r = await http.Response.fromStream(streamed);
     if (r.statusCode != 201) {

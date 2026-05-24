@@ -1,3 +1,5 @@
+import 'package:image_picker/image_picker.dart';
+
 class RecipeSubmitRequest {
   final String title;
   final List<String> steps;
@@ -8,6 +10,7 @@ class RecipeSubmitRequest {
   final double? servings;
   final int? calories;
   final List<String> category;
+  final XFile? mainImage;
 
   const RecipeSubmitRequest({
     required this.title,
@@ -19,6 +22,7 @@ class RecipeSubmitRequest {
     this.servings,
     this.calories,
     this.category = const [],
+    this.mainImage,
   });
 
   Map<String, dynamic> toJson() => {
