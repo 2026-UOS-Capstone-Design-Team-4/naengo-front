@@ -216,14 +216,14 @@ class _RecipeRecommendationScreenState
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: 20.h,
-                vertical: 24.h,
-              ),
+              padding: EdgeInsets.only(top: 24.h, bottom: 24.h),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildWelcomeMessage(),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20.h),
+                    child: _buildWelcomeMessage(),
+                  ),
                   SizedBox(height: 40.h),
                   _buildRecipeRecommendationSection(),
                   SizedBox(height: 40.h),
@@ -260,10 +260,13 @@ class _RecipeRecommendationScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          "인기 레시피 추천",
-          style: TextStyleHelper.instance.body15Regular.copyWith(
-            color: appTheme.disabled,
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20.h),
+          child: Text(
+            "인기 레시피 추천",
+            style: TextStyleHelper.instance.body15Regular.copyWith(
+              color: appTheme.disabled,
+            ),
           ),
         ),
         SizedBox(height: 12.h),
@@ -272,6 +275,7 @@ class _RecipeRecommendationScreenState
         else
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.symmetric(horizontal: 20.h),
             child: Row(
               children: _recommendations.asMap().entries.map((entry) {
                 final index = entry.key;

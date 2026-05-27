@@ -71,6 +71,32 @@ class NaengoApi {
     defaultValue: '',
   );
 
+  /// 아이디/비밀번호 로그인 (`POST /auth/login`).
+  /// 반환: { user_id, nickname, role, access_token }
+  /// 실패 시 서버 에러 코드(예: INVALID_CREDENTIALS)를 message로 담은 [HttpException] throw.
+  static Future<Map<String, dynamic>> loginWithCredentials(
+    String username,
+    String password,
+  ) async {
+    final uri = Uri.parse('$_authBase/api/v1/auth/login');
+    final r = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'username': username, 'password': password}),
+    );
+    if (r.statusCode == 200) {
+      return jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+    }
+    String code = 'LOGIN_FAILED';
+    try {
+      final body =
+          jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+      code =
+          ((body['error'] as Map?)?['code'] as String?) ?? code;
+    } catch (_) {}
+    throw HttpException(code, uri: uri);
+  }
+
   /// 카카오 소셜 로그인 (`POST /api/v1/auth/social/kakao`).
   /// [kakaoAccessToken]: 카카오 SDK에서 받은 access_token.
   /// 반환: { user_id, nickname, role, access_token }
@@ -263,7 +289,7 @@ class NaengoApi {
     final uri = Uri.parse(
       '$baseUrl/api/v1/recipes',
     ).replace(queryParameters: params);
-    final r = await http.get(uri);
+    final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException('getRecipes ${r.statusCode}: ${r.body}', uri: uri);
     }
@@ -283,7 +309,7 @@ class NaengoApi {
   /// 레시피 단건 조회 (`GET /api/v1/recipes/{recipe_id}`).
   static Future<Recipe> getRecipe(int recipeId) async {
     final uri = Uri.parse('$baseUrl/api/v1/recipes/$recipeId');
-    final r = await http.get(uri);
+    final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException('getRecipe ${r.statusCode}: ${r.body}', uri: uri);
     }
@@ -359,14 +385,14 @@ class NaengoApi {
 
   // ───────────────────────── 레시피 제출 API ─────────────────────────
 
-  /// 레시피 제출 (`POST /api/v1/user-recipes`, multipart/form-data).
+  /// 레시피 제출 (`POST /api/v1/user-recipes/me`, multipart/form-data).
   /// [payload]: 레시피 데이터 Map — `payload` 필드에 JSON 문자열로 전송.
   /// [mainImage]: 대표 이미지 (선택, jpeg/png/webp, max 10MB).
   static Future<int> submitPendingRecipe(
     Map<String, dynamic> payload, {
     XFile? mainImage,
   }) async {
-    final uri = Uri.parse('$baseUrl/api/v1/user-recipes');
+    final uri = Uri.parse('$baseUrl/api/v1/user-recipes/me');
     final request = http.MultipartRequest('POST', uri);
     if (AuthServiceLocator.instance.token != null) {
       request.headers['Authorization'] =
@@ -391,9 +417,9 @@ class NaengoApi {
     return json['user_recipe_id'] as int? ?? json['pending_recipe_id'] as int;
   }
 
-  /// 내가 제출한 레시피 목록 (`GET /api/v1/user-recipes`).
+  /// 내가 제출한 레시피 목록 (`GET /api/v1/user-recipes/me`).
   static Future<List<Map<String, dynamic>>> getMyPendingRecipes() async {
-    final uri = Uri.parse('$baseUrl/api/v1/user-recipes');
+    final uri = Uri.parse('$baseUrl/api/v1/user-recipes/me');
     final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException(
@@ -401,13 +427,21 @@ class NaengoApi {
         uri: uri,
       );
     }
-    final list = jsonDecode(utf8.decode(r.bodyBytes)) as List;
-    return list.map((e) => (e as Map).cast<String, dynamic>()).toList();
+    final decoded = jsonDecode(utf8.decode(r.bodyBytes));
+    final List rawItems;
+    if (decoded is Map<String, dynamic>) {
+      rawItems = decoded['items'] as List? ?? [];
+    } else if (decoded is List) {
+      rawItems = decoded;
+    } else {
+      rawItems = [];
+    }
+    return rawItems.map((e) => (e as Map).cast<String, dynamic>()).toList();
   }
 
-  /// 내가 제출한 레시피 단건 조회 (`GET /api/v1/user-recipes/{id}`).
+  /// 내가 제출한 레시피 단건 조회 (`GET /api/v1/user-recipes/me/{id}`).
   static Future<Map<String, dynamic>> getUserRecipe(int id) async {
-    final uri = Uri.parse('$baseUrl/api/v1/user-recipes/$id');
+    final uri = Uri.parse('$baseUrl/api/v1/user-recipes/me/$id');
     final r = await http.get(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException('getUserRecipe ${r.statusCode}: ${r.body}', uri: uri);
@@ -415,9 +449,9 @@ class NaengoApi {
     return jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
   }
 
-  /// 제출한 레시피 삭제 (`DELETE /api/v1/user-recipes/{id}`).
+  /// 제출한 레시피 삭제 (`DELETE /api/v1/user-recipes/me/{id}`).
   static Future<void> deletePendingRecipe(int id) async {
-    final uri = Uri.parse('$baseUrl/api/v1/user-recipes/$id');
+    final uri = Uri.parse('$baseUrl/api/v1/user-recipes/me/$id');
     final r = await http.delete(uri, headers: _authHeaders());
     if (r.statusCode != 200) {
       throw HttpException(

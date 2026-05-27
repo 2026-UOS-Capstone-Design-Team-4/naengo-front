@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 
 import '../models/user.dart';
@@ -57,19 +58,14 @@ class RealAuthService implements AuthService {
 
   @override
   AppUser get currentUser =>
-      _user ??
-      AppUser(
-        userId: 0,
-        nickname: '게스트',
-        createdAt: DateTime.now(),
-      );
+      _user ?? AppUser(userId: 0, nickname: '게스트', createdAt: DateTime.now());
 
   @override
   UserProfile get currentProfile => UserProfile(
-        userId: _user?.userId ?? 0,
-        userInput: _userInput,
-        updatedAt: DateTime.now(),
-      );
+    userId: _user?.userId ?? 0,
+    userInput: _userInput,
+    updatedAt: DateTime.now(),
+  );
 
   @override
   bool get isLoggedIn => _user != null;
@@ -87,16 +83,30 @@ class RealAuthService implements AuthService {
     try {
       if (await isKakaoTalkInstalled()) {
         oauthToken = await UserApi.instance.loginWithKakaoTalk();
+        debugPrint('[Kakao] loginWithKakaoTalk 성공');
       } else {
         oauthToken = await UserApi.instance.loginWithKakaoAccount();
+        debugPrint('[Kakao] loginWithKakaoAccount 성공');
       }
-    } catch (_) {
+    } catch (e) {
       // KakaoTalk 로그인 실패 시 웹 계정 로그인으로 재시도
+      debugPrint('[Kakao] 앱 로그인 실패, 웹 로그인 시도: $e');
       oauthToken = await UserApi.instance.loginWithKakaoAccount();
+      debugPrint('[Kakao] loginWithKakaoAccount(폴백) 성공');
     }
 
+    debugPrint('[Kakao] accessToken prefix: ${oauthToken.accessToken.substring(0, 10)}...');
+
     // 2. 카카오 access token을 우리 서버로 전달 → 자체 JWT 발급
-    final json = await NaengoApi.socialLoginKakao(oauthToken.accessToken);
+    debugPrint('[Kakao] 백엔드 소셜 로그인 요청 시작');
+    final Map<String, dynamic> json;
+    try {
+      json = await NaengoApi.socialLoginKakao(oauthToken.accessToken);
+      debugPrint('[Kakao] 백엔드 응답 성공: $json');
+    } catch (e, st) {
+      debugPrint('[Kakao] 백엔드 호출 실패: $e\n$st');
+      rethrow;
+    }
 
     // 3. JWT in-memory 저장 및 사용자 정보 설정
     _token = json['access_token'] as String;
@@ -123,16 +133,39 @@ class RealAuthService implements AuthService {
     return _user!;
   }
 
-  // ── 이메일/비밀번호 로그인 (UI 없음, 확장 대비) ──────────
+  // ── 아이디/비밀번호 로그인 ─────────────────────────────
 
   @override
-  Future<AppUser> login(String email, String password) async {
-    throw UnimplementedError('이메일/비밀번호 로그인은 현재 지원하지 않습니다.');
+  Future<AppUser> login(String username, String password) async {
+    final json = await NaengoApi.loginWithCredentials(username, password);
+
+    _token = json['access_token'] as String;
+    _user = AppUser(
+      userId: json['user_id'] as int,
+      nickname: json['nickname'] as String,
+      createdAt: DateTime.now(),
+    );
+
+    try {
+      _user = await NaengoApi.getMe();
+    } catch (_) {}
+
+    try {
+      _userInput = await NaengoApi.getProfileInput();
+    } catch (_) {
+      _userInput = [];
+    }
+
+    return _user!;
   }
 
   @override
-  Future<AppUser> signup(String email, String password, String nickname) async {
-    throw UnimplementedError('이메일/비밀번호 회원가입은 현재 지원하지 않습니다.');
+  Future<AppUser> signup(
+    String username,
+    String password,
+    String nickname,
+  ) async {
+    throw UnimplementedError('회원가입은 현재 지원하지 않습니다.');
   }
 
   // ── 데이터 로드/수정 ────────────────────────────────────
@@ -169,10 +202,9 @@ class RealAuthService implements AuthService {
 
   @override
   Future<void> logout() async {
-    await NaengoApi.postLogout(); // 서버에 로그아웃 알림 (멱등)
+    await NaengoApi.postLogout(); // 서버에 로그아웃 알림
     _user = null;
     _token = null;
     _userInput = [];
   }
 }
-
