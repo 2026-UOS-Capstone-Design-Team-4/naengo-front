@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
@@ -14,7 +13,14 @@ import 'auth_service.dart';
 
 /// 취향 입력이 사용자 정보(음식 선호·알레르기·식단·조리 습관)가 아닐 때 서버가 반환하는 422 에러.
 class ProfileInputNotUserInfoException implements Exception {
-  const ProfileInputNotUserInfoException();
+  final String message;
+
+  const ProfileInputNotUserInfoException([
+    this.message = '음식 선호, 알레르기, 식단 정보를 입력해주세요.',
+  ]);
+
+  @override
+  String toString() => message;
 }
 
 /// SSE 응답을 파싱한 이벤트 타입.
@@ -46,10 +52,17 @@ class ChatStreamError extends ChatEvent {
 
 /// Naengo (냉고) 백엔드 채팅 API 클라이언트.
 ///
-/// 베이스 URL 은 dart-define 으로 주입 가능:
-///   flutter run --dart-define=NAENGO_API_BASE=http://your-api-server:8000
+/// 운영 백엔드:
+///   - AI 서버 (FastAPI / 채팅·SSE·게시판):  http://3.34.187.42:8000  (raw IP, HTTP)
+///   - Spring 서버 (인증):                    https://api.naengo.com   (HTTPS)
 ///
-/// 두 가지 엔드포인트 모두 **SSE (Server-Sent Events)** 스트림으로 응답:
+/// TODO: AI 서버도 ai.naengo.com 서브도메인 + HTTPS 분기되면 baseUrl 갱신.
+///
+/// 다른 환경(스테이징/로컬)에서는 dart-define 으로 오버라이드:
+///   flutter run --dart-define=NAENGO_API_BASE=https://your-ai-server \
+///               --dart-define=NAENGO_SPRING_BASE=https://your-spring-server
+///
+/// 두 가지 엔드포인트 모두 SSE (Server-Sent Events) 스트림으로 응답:
 ///   POST /api/v1/chat/rooms          — 새 방 + 첫 메시지
 ///   POST /api/v1/chat/rooms/{room_id} — 기존 방 메시지
 ///
@@ -60,15 +73,19 @@ class ChatStreamError extends ChatEvent {
 class NaengoApi {
   NaengoApi._();
 
-  /// AI 서버 URL (채팅 SSE). `--dart-define=NAENGO_API_BASE=...` 로 변경 가능.
+  /// AI 서버 URL (채팅 SSE / 레시피 / 게시판).
+  /// `--dart-define=NAENGO_API_BASE=...` 로 변경 가능.
+  ///
+  /// 현재는 raw IP (HTTP). ai.naengo.com 서브도메인 분기 완료 시 HTTPS 도메인으로 전환.
   static const String baseUrl = String.fromEnvironment(
     'NAENGO_API_BASE',
-    defaultValue: '',
+    defaultValue: 'http://3.34.187.42:8000',
   );
 
+  /// Spring 서버 URL (인증 등). `--dart-define=NAENGO_SPRING_BASE=...` 로 변경 가능.
   static const String _authBase = String.fromEnvironment(
     'NAENGO_SPRING_BASE',
-    defaultValue: '',
+    defaultValue: 'https://api.naengo.com',
   );
 
   /// 아이디/비밀번호 로그인 (`POST /auth/login`).
@@ -378,8 +395,8 @@ class NaengoApi {
     if (r.bodyBytes.isEmpty) return {};
     final json = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
     return {
-      'likes_count': json['likes_count'] as int? ?? 0,
-      'scrap_count': json['scrap_count'] as int? ?? 0,
+      if (json['likes_count'] is int) 'likes_count': json['likes_count'] as int,
+      if (json['scrap_count'] is int) 'scrap_count': json['scrap_count'] as int,
     };
   }
 
@@ -503,11 +520,19 @@ class NaengoApi {
         uri: uri,
       );
     }
-    final json = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
-    return (json['user_input'] as List<dynamic>?)
-            ?.map((e) => e as String)
-            .toList() ??
-        [];
+    final decoded = jsonDecode(utf8.decode(r.bodyBytes));
+    final raw = switch (decoded) {
+      {'user_input': final List list} => list,
+      {'inputs': final List list} => list,
+      {'data': {'user_input': final List list}} => list,
+      {'profile': {'user_input': final List list}} => list,
+      final List list => list,
+      _ => const [],
+    };
+    return raw
+        .map((e) => e.toString().trim())
+        .where((e) => e.isNotEmpty)
+        .toList(growable: false);
   }
 
   static Future<void> appendProfileInput(String text) async {
@@ -518,7 +543,7 @@ class NaengoApi {
       body: jsonEncode({'text': text}),
     );
     if (r.statusCode == 422) {
-      throw const ProfileInputNotUserInfoException();
+      throw ProfileInputNotUserInfoException(_extractErrorMessage(r.bodyBytes));
     }
     if (r.statusCode >= 300) {
       throw HttpException(
@@ -526,6 +551,21 @@ class NaengoApi {
         uri: uri,
       );
     }
+  }
+
+  static String _extractErrorMessage(List<int> bodyBytes) {
+    try {
+      final decoded = jsonDecode(utf8.decode(bodyBytes));
+      final message = switch (decoded) {
+        {'message': final String value} => value,
+        {'detail': final String value} => value,
+        {'error': {'message': final String value}} => value,
+        {'error': {'detail': final String value}} => value,
+        _ => null,
+      };
+      if (message != null && message.trim().isNotEmpty) return message.trim();
+    } catch (_) {}
+    return '음식 선호, 알레르기, 식단 정보를 입력해주세요.';
   }
 
   static Future<void> deleteProfileInput(String text) async {
@@ -556,60 +596,66 @@ class NaengoApi {
       request.headers['Content-Type'] = 'application/json';
       request.headers['Accept'] = 'text/event-stream';
       request.headers['Cache-Control'] = 'no-cache';
+
       if (AuthServiceLocator.instance.token != null) {
         request.headers['Authorization'] =
             'Bearer ${AuthServiceLocator.instance.token}';
       }
+
       request.body = jsonEncode({
         'prompt': prompt,
         if (imageDataUrl != null) 'image': imageDataUrl,
         if (history != null) 'history': history,
       });
 
-      final response = await client.send(request);
+      final streamedResponse = await client.send(request);
 
-      if (response.statusCode != 200) {
-        yield ChatStreamError('Server error: ${response.statusCode}');
+      if (streamedResponse.statusCode != 200) {
+        final body = await streamedResponse.stream.bytesToString();
+        yield ChatStreamError(
+          'Server error (${streamedResponse.statusCode}): $body',
+        );
         return;
       }
 
-      await for (final line
-          in response.stream
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())) {
+      String? currentEvent;
+      await for (final line in streamedResponse.stream
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())) {
         if (line.isEmpty) continue;
 
-        if (line.startsWith('event: ')) {
-          continue;
-        }
-
-        if (line.startsWith('data: ')) {
-          final data = line.substring(6);
+        if (line.startsWith('event:')) {
+          currentEvent = line.substring(6).trim();
+        } else if (line.startsWith('data:')) {
+          final data = line.substring(5).trim();
           if (data == '[DONE]') break;
 
           try {
-            final json = jsonDecode(data);
-            if (json is Map<String, dynamic>) {
-              if (json.containsKey('room_id')) {
-                yield RoomCreated(json['room_id'] as int);
-              } else if (json.containsKey('content')) {
-                yield MessageChunk(json['content'] as String);
+            final decoded = jsonDecode(data);
+            if (currentEvent == 'room') {
+              final roomId = decoded['room_id'] as int?;
+              if (roomId != null) yield RoomCreated(roomId);
+            } else if (currentEvent == 'message') {
+              final content = decoded['content'] as String?;
+              if (content != null) yield MessageChunk(content);
+            } else if (currentEvent == 'recipes') {
+              if (decoded is List) {
+                final recipes = decoded
+                    .map(
+                      (r) =>
+                          Recipe.fromJson((r as Map).cast<String, dynamic>()),
+                    )
+                    .toList();
+                yield RecipesReceived(recipes);
               }
-            } else if (json is List) {
-              final recipes = json
-                  .map(
-                    (r) => Recipe.fromJson((r as Map).cast<String, dynamic>()),
-                  )
-                  .toList();
-              yield RecipesReceived(recipes);
             }
-          } catch (e) {
-            debugPrint('SSE JSON parse error: $e\nData: $data');
+          } catch (_) {
+            // chunk parse error, ignore or handle specifically if needed
           }
         }
       }
     } catch (e) {
-      yield ChatStreamError(e.toString());
+      yield ChatStreamError('Connection error: $e');
     } finally {
       client.close();
     }

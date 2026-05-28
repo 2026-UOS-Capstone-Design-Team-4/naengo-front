@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/app_export.dart';
+import '../../core/session_keys.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/naengo_snackbar.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final bool isInitialEntry;
+
+  const LoginScreen({super.key, this.isInitialEntry = false});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -34,6 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       await AuthServiceLocator.instance.login(username, password);
+      await _markLoginEntrySeen();
       if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil(
         AppRoutes.mainShell,
@@ -55,6 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       await AuthServiceLocator.instance.loginWithKakao();
+      await _markLoginEntrySeen();
       if (!mounted) return;
       // 로그인 완료 → 메인 화면으로 이동 (스택 전체 교체)
       Navigator.of(context).pushNamedAndRemoveUntil(
@@ -68,9 +75,30 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _continueAsGuest() async {
+    await _markLoginEntrySeen();
+    if (!mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      AppRoutes.mainShell,
+      (route) => false,
+    );
+  }
+
+  Future<void> _markLoginEntrySeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(hasSeenLoginEntryKey, true);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: !widget.isInitialEntry,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && widget.isInitialEntry) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
       backgroundColor: Colors.white,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
@@ -83,15 +111,17 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-            // 뒤로 가기
-            Padding(
-              padding: EdgeInsets.only(left: 4.h, top: 4.h),
-              child: IconButton(
-                icon: Icon(Icons.arrow_back_ios,
-                    size: 20.h, color: appTheme.disabled),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
+            if (!widget.isInitialEntry)
+              Padding(
+                padding: EdgeInsets.only(left: 4.h, top: 4.h),
+                child: IconButton(
+                  icon: Icon(Icons.arrow_back_ios,
+                      size: 20.h, color: appTheme.disabled),
+                  onPressed: _isLoading ? null : () => Navigator.pop(context),
+                ),
+              )
+            else
+              SizedBox(height: 32.h),
 
             // 타이틀 영역
             Padding(
@@ -304,7 +334,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // 비로그인 이용
                   GestureDetector(
-                    onTap: _isLoading ? null : () => Navigator.pop(context),
+                    onTap: _isLoading ? null : _continueAsGuest,
                     child: Text(
                       '로그인 안하고 이용할래요',
                       style: TextStyle(
@@ -325,6 +355,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

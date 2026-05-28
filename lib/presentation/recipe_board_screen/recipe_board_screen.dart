@@ -203,7 +203,6 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
     );
     if (mounted) {
       setState(() {});
-      if (_tab == _Tab.all) _loadAllRecipes();
       if (_tab == _Tab.mine) _loadMyRecipes();
     }
   }

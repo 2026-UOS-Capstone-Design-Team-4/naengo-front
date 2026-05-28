@@ -11,6 +11,7 @@ import '../presentation/recipe_write_screen/recipe_write_screen.dart';
 class AppRoutes {
   static const String mainShell = '/';
   static const String loginScreen = '/login';
+  static const String loginEntryScreen = '/login_entry';
   static const String recipeRecommendationScreen = '/recipe_recommendation_screen';
   static const String chatInterfaceScreen = '/chat_interface_screen';
   static const String recipeManagementScreen = '/recipe_management_screen';
@@ -46,12 +47,15 @@ class AppRoutes {
       case loginScreen:
         page = const LoginScreen();
         break;
+      case loginEntryScreen:
+        page = const LoginScreen(isInitialEntry: true);
+        break;
       default:
         page = const MainShell();
     }
 
     // 로그인 화면: 애니메이션 없이 즉시 표시
-    if (settings.name == loginScreen) {
+    if (settings.name == loginScreen || settings.name == loginEntryScreen) {
       return PageRouteBuilder(
         settings: settings,
         pageBuilder: (_, __, ___) => page,

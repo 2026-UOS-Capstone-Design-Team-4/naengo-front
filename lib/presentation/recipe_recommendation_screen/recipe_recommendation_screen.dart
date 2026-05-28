@@ -181,10 +181,20 @@ class _RecipeRecommendationScreenState
   }
 
   Future<void> _navigateToDetail(RecipeItem recipe) async {
+    var detailRecipe = recipe;
+    try {
+      detailRecipe = RecipeItem.fromRecipe(
+        await NaengoApi.getRecipe(recipe.recipeId),
+      );
+    } catch (e) {
+      debugPrint('[Recommendation] 레시피 상세 로드 실패: $e');
+    }
+    if (!mounted) return;
+
     await Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (c, a, b) => RecipeDetailScreen(recipe: recipe),
+        pageBuilder: (c, a, b) => RecipeDetailScreen(recipe: detailRecipe),
         transitionsBuilder: (c, a, b, child) => SlideTransition(
           position: Tween<Offset>(
             begin: const Offset(0.0, 1.0),

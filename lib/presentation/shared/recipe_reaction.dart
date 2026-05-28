@@ -24,16 +24,6 @@ mixin RecipeReactionMixin<T extends StatefulWidget> on State<T> {
       recipe.isLiked = nextLiked;
       recipe.likesCount += nextLiked ? 1 : -1;
     });
-    if (recipe.recipeId >= RecipeItem.localOnlyIdThreshold) {
-      RecipeReactionStore.updateReaction(
-        recipe.recipeId,
-        isLiked: recipe.isLiked,
-        isBookmarked: recipe.isBookmarked,
-        likesCount: recipe.likesCount,
-        scrapCount: recipe.scrapCount,
-      );
-      return;
-    }
     try {
       final stats =
           await NaengoApi.setRecipeLike(recipe.recipeId, liked: nextLiked);
@@ -75,16 +65,6 @@ mixin RecipeReactionMixin<T extends StatefulWidget> on State<T> {
       recipe.isBookmarked = nextScrapped;
       recipe.scrapCount += nextScrapped ? 1 : -1;
     });
-    if (recipe.recipeId >= RecipeItem.localOnlyIdThreshold) {
-      RecipeReactionStore.updateReaction(
-        recipe.recipeId,
-        isLiked: recipe.isLiked,
-        isBookmarked: recipe.isBookmarked,
-        likesCount: recipe.likesCount,
-        scrapCount: recipe.scrapCount,
-      );
-      return;
-    }
     try {
       final stats = await NaengoApi.setRecipeScrap(
         recipe.recipeId,

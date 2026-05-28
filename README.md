@@ -19,15 +19,23 @@ flutter pub get
 flutter run
 ```
 
-### 백엔드 주소 변경 (선택)
-기본은 `http://43.201.62.254:8000` 입니다. 다른 주소로 빌드하려면 `--dart-define` 으로 주입:
+### 백엔드 주소 (기본값)
+- AI 서버 (FastAPI 채팅·SSE·게시판): `http://3.34.187.42:8000`  ⚠️ raw IP, HTTP
+- Spring 서버 (인증):                  `https://api.naengo.com`   ✅ HTTPS
+
+> AI 서버는 아직 ai.naengo.com 서브도메인 분기 + HTTPS 적용 전 상태입니다.
+> 분기 완료되면 `naengo_api_service.dart` 의 `baseUrl` 기본값을 `https://ai.naengo.com` 으로 갱신하세요.
+
+다른 주소로 빌드하려면 `--dart-define` 으로 주입:
 
 ```bash
-flutter run --dart-define=NAENGO_API_BASE=http://your-server:8000
+flutter run \
+  --dart-define=NAENGO_API_BASE=http://your-ai-server:8000 \
+  --dart-define=NAENGO_SPRING_BASE=https://your-spring-server
 ```
 
 ### Android cleartext HTTP
-백엔드가 평문 HTTP 라 Android 9+ 에선 기본 차단입니다. `android/app/src/main/AndroidManifest.xml` 의 `<application>` 태그에 다음 속성이 있어야 합니다:
+AI 서버가 아직 HTTP(IP)라서 Android 9+ 의 cleartext 차단을 우회하기 위해 `android/app/src/main/AndroidManifest.xml` 의 `<application>` 태그에 다음 속성이 필요합니다:
 
 ```xml
 <application
@@ -35,7 +43,7 @@ flutter run --dart-define=NAENGO_API_BASE=http://your-server:8000
     ...>
 ```
 
-배포 직전엔 백엔드를 HTTPS 로 전환하고 이 속성을 제거하는 걸 권장합니다.
+AI 서버가 HTTPS로 전환되면 이 속성을 제거하는 것을 권장합니다.
 
 ---
 

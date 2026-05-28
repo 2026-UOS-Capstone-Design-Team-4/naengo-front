@@ -53,6 +53,12 @@ class ChatStore {
     roomMessages.remove(roomId);
   }
 
+  /// 로그인 세션이 끝날 때 메모리에 남아 있는 채팅방/메시지 캐시를 모두 비운다.
+  static void clear() {
+    chatRooms.clear();
+    roomMessages.clear();
+  }
+
   /// 백엔드 `GET /chat/rooms` 응답으로 `chatRooms` 캐시 갱신.
   ///
   /// 정책:

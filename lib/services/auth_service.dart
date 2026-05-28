@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../data/chat_store.dart';
 import '../models/user.dart';
 import '../models/user_profile.dart';
 import 'naengo_api_service.dart';
@@ -14,6 +16,8 @@ abstract class AuthService {
 
   /// 서비스 초기화 — API 데이터를 로드. Mock에서는 즉시 완료.
   Future<void> load();
+
+  Future<void> restoreSession();
 
   /// 유저가 직접 입력한 문장 배열([UserProfile.userInput])을 업데이트.
   Future<void> updateUserInput(List<String> inputs);
@@ -52,6 +56,8 @@ class AuthServiceLocator {
 // ─────────────────────────────────────────────────────────
 
 class RealAuthService implements AuthService {
+  static const _tokenKey = 'naengo_access_token';
+
   AppUser? _user;
   String? _token;
   List<String> _userInput = [];
@@ -130,6 +136,8 @@ class RealAuthService implements AuthService {
       _userInput = [];
     }
 
+    await _saveToken();
+
     return _user!;
   }
 
@@ -156,6 +164,8 @@ class RealAuthService implements AuthService {
       _userInput = [];
     }
 
+    await _saveToken();
+
     return _user!;
   }
 
@@ -177,6 +187,24 @@ class RealAuthService implements AuthService {
       _userInput = await NaengoApi.getProfileInput();
     } catch (_) {
       _userInput = [];
+    }
+  }
+
+  @override
+  Future<void> restoreSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedToken = prefs.getString(_tokenKey);
+    if (savedToken == null || savedToken.isEmpty) return;
+
+    _token = savedToken;
+    try {
+      await load();
+    } catch (e) {
+      debugPrint('[Auth] 저장된 로그인 복원 실패: $e');
+      _user = null;
+      _token = null;
+      _userInput = [];
+      await prefs.remove(_tokenKey);
     }
   }
 
@@ -206,5 +234,15 @@ class RealAuthService implements AuthService {
     _user = null;
     _token = null;
     _userInput = [];
+    ChatStore.clear();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tokenKey);
+  }
+
+  Future<void> _saveToken() async {
+    final token = _token;
+    if (token == null || token.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, token);
   }
 }

@@ -108,10 +108,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         _isSavingPreference = false;
       });
       NaengoSnackBar.show(context, '취향이 저장되었어요.');
-    } on ProfileInputNotUserInfoException {
+    } on ProfileInputNotUserInfoException catch (e) {
       if (!mounted) return;
       setState(() => _isSavingPreference = false);
-      NaengoSnackBar.show(context, '음식 선호, 알레르기, 식단 정보를 입력해주세요.');
+      NaengoSnackBar.show(context, e.message);
     } catch (e) {
       debugPrint('[ProfileSettings] 취향 저장 실패: $e');
       if (!mounted) return;

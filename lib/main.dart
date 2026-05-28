@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/app_export.dart';
+import 'core/session_keys.dart';
 import 'services/auth_service.dart';
 
 var globalMessengerKey = GlobalKey<ScaffoldMessengerState>();
@@ -14,14 +16,25 @@ void main() async {
   final kakaoKey = await configChannel.invokeMethod<String>('getKakaoNativeAppKey') ?? '';
   KakaoSdk.init(nativeAppKey: kakaoKey);
 
-  // RealAuthService로 교체. 토큰은 in-memory — 앱 재시작 시 재로그인 필요.
-  AuthServiceLocator.instance = RealAuthService();
+  // RealAuthService로 교체하고 저장된 토큰이 있으면 세션을 복원.
+  final authService = RealAuthService();
+  AuthServiceLocator.instance = authService;
+  await authService.restoreSession();
+  final prefs = await SharedPreferences.getInstance();
+  final hasSeenLoginEntry = prefs.getBool(hasSeenLoginEntryKey) ?? false;
+  final initialRoute = authService.isLoggedIn || hasSeenLoginEntry
+      ? AppRoutes.mainShell
+      : AppRoutes.loginEntryScreen;
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  runApp(MyApp());
+  runApp(MyApp(initialRoute: initialRoute));
 }
 
 class MyApp extends StatelessWidget {
+  final String initialRoute;
+
+  const MyApp({super.key, this.initialRoute = AppRoutes.initialRoute});
+
   @override
   Widget build(BuildContext context) {
     return Sizer(
@@ -29,7 +42,7 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           title: 'fridge_expert',
           debugShowCheckedModeBanner: false,
-          initialRoute: AppRoutes.initialRoute,
+          initialRoute: initialRoute,
           onGenerateRoute: AppRoutes.generateRoute,
           builder: (context, child) {
             return MediaQuery(
