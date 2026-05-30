@@ -53,10 +53,8 @@ class ChatStreamError extends ChatEvent {
 /// Naengo (냉고) 백엔드 채팅 API 클라이언트.
 ///
 /// 운영 백엔드:
-///   - AI 서버 (FastAPI / 채팅·SSE·게시판):  http://3.34.187.42:8000  (raw IP, HTTP)
+///   - AI 서버 (FastAPI / 채팅·SSE·게시판):  https://ai.naengo.com
 ///   - Spring 서버 (인증):                    https://api.naengo.com   (HTTPS)
-///
-/// TODO: AI 서버도 ai.naengo.com 서브도메인 + HTTPS 분기되면 baseUrl 갱신.
 ///
 /// 다른 환경(스테이징/로컬)에서는 dart-define 으로 오버라이드:
 ///   flutter run --dart-define=NAENGO_API_BASE=https://your-ai-server \
@@ -75,11 +73,9 @@ class NaengoApi {
 
   /// AI 서버 URL (채팅 SSE / 레시피 / 게시판).
   /// `--dart-define=NAENGO_API_BASE=...` 로 변경 가능.
-  ///
-  /// 현재는 raw IP (HTTP). ai.naengo.com 서브도메인 분기 완료 시 HTTPS 도메인으로 전환.
   static const String baseUrl = String.fromEnvironment(
     'NAENGO_API_BASE',
-    defaultValue: 'http://3.34.187.42:8000',
+    defaultValue: 'https://ai.naengo.com',
   );
 
   /// Spring 서버 URL (인증 등). `--dart-define=NAENGO_SPRING_BASE=...` 로 변경 가능.
@@ -360,6 +356,49 @@ class NaengoApi {
       nextCursor: map['next_cursor']?.toString(),
       hasNext: map['has_next'] as bool? ?? false,
     );
+  }
+
+  /// 승인된 사용자 레시피 목록 (`GET /api/v1/user-recipes`).
+  static Future<({List<Map<String, dynamic>> items, String? nextCursor, bool hasNext})>
+  getApprovedUserRecipes({int limit = 20, String? cursor}) async {
+    final params = <String, String>{
+      'limit': limit.toString(),
+      if (cursor != null) 'cursor': cursor,
+    };
+    final uri = Uri.parse(
+      '$baseUrl/api/v1/user-recipes',
+    ).replace(queryParameters: params);
+    final r = await http.get(uri, headers: _authHeaders());
+    if (r.statusCode != 200) {
+      throw HttpException(
+        'getApprovedUserRecipes ${r.statusCode}: ${r.body}',
+        uri: uri,
+      );
+    }
+    final decoded = jsonDecode(utf8.decode(r.bodyBytes));
+    final map = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+    final rawItems = map['items'] as List? ?? (decoded is List ? decoded : []);
+    final items = rawItems
+        .map((e) => (e as Map).cast<String, dynamic>())
+        .toList(growable: false);
+    return (
+      items: items,
+      nextCursor: map['next_cursor'] as String?,
+      hasNext: map['has_next'] as bool? ?? false,
+    );
+  }
+
+  /// 승인된 사용자 레시피 단건 조회 (`GET /api/v1/user-recipes/{id}`).
+  static Future<Map<String, dynamic>> getApprovedUserRecipe(int id) async {
+    final uri = Uri.parse('$baseUrl/api/v1/user-recipes/$id');
+    final r = await http.get(uri, headers: _authHeaders());
+    if (r.statusCode != 200) {
+      throw HttpException(
+        'getApprovedUserRecipe ${r.statusCode}: ${r.body}',
+        uri: uri,
+      );
+    }
+    return jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
   }
 
   static Future<Map<String, int>> setRecipeLike(

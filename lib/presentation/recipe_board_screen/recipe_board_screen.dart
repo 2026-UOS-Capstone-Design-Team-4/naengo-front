@@ -31,7 +31,9 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
   bool _isLoadingMore = false;
   String? _allLoadError;
   String? _nextCursor;
+  String? _nextUserRecipeCursor;
   bool _hasNext = false;
+  bool _hasNextUserRecipes = false;
   final ScrollController _scrollController = ScrollController();
 
   List<RecipeItem> _myRecipes = [];
@@ -72,7 +74,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
 
   void _onScroll() {
     if (_tab != _Tab.all) return;
-    if (_isLoadingMore || !_hasNext) return;
+    if (_isLoadingMore || (!_hasNext && !_hasNextUserRecipes)) return;
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       _loadMoreRecipes();
@@ -90,19 +92,29 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
       _isLoadingAll = true;
       _allLoadError = null;
       _nextCursor = null;
+      _nextUserRecipeCursor = null;
       _hasNext = false;
+      _hasNextUserRecipes = false;
     });
     try {
-      final result = _currentSort == SortType.bookmarked
+      final officialResult = _currentSort == SortType.bookmarked
           ? await NaengoApi.getMyScraps()
           : await NaengoApi.getRecipes(
               sort: _currentSort == SortType.mostLiked ? 'likes' : 'latest',
             );
+      final userResult = _currentSort == SortType.latest
+          ? await NaengoApi.getApprovedUserRecipes()
+          : null;
       if (!mounted) return;
       setState(() {
-        _allRecipes = result.items.map(RecipeItem.fromRecipe).toList(growable: false);
-        _nextCursor = result.nextCursor;
-        _hasNext = result.hasNext;
+        _allRecipes = _mergeAllRecipes(
+          officialResult.items.map(RecipeItem.fromRecipe),
+          userResult?.items.map(RecipeItem.fromPendingJson) ?? const [],
+        );
+        _nextCursor = officialResult.nextCursor;
+        _nextUserRecipeCursor = userResult?.nextCursor;
+        _hasNext = officialResult.hasNext;
+        _hasNextUserRecipes = userResult?.hasNext ?? false;
         _isLoadingAll = false;
       });
     } catch (e, st) {
@@ -116,23 +128,43 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
   }
 
   Future<void> _loadMoreRecipes() async {
-    if (_isLoadingMore || !_hasNext || _nextCursor == null) return;
+    if (_isLoadingMore) return;
+    final shouldLoadOfficial = _hasNext && _nextCursor != null;
+    final shouldLoadUserRecipes =
+        _currentSort == SortType.latest &&
+        _hasNextUserRecipes &&
+        _nextUserRecipeCursor != null;
+    if (!shouldLoadOfficial && !shouldLoadUserRecipes) return;
     setState(() => _isLoadingMore = true);
     try {
-      final result = _currentSort == SortType.bookmarked
-          ? await NaengoApi.getMyScraps(cursor: _nextCursor)
-          : await NaengoApi.getRecipes(
-              sort: _currentSort == SortType.mostLiked ? 'likes' : 'latest',
-              cursor: _nextCursor,
-            );
+      final officialResult = shouldLoadOfficial
+          ? (_currentSort == SortType.bookmarked
+              ? await NaengoApi.getMyScraps(cursor: _nextCursor)
+              : await NaengoApi.getRecipes(
+                  sort: _currentSort == SortType.mostLiked ? 'likes' : 'latest',
+                  cursor: _nextCursor,
+                ))
+          : null;
+      final userResult = shouldLoadUserRecipes
+          ? await NaengoApi.getApprovedUserRecipes(
+              cursor: _nextUserRecipeCursor,
+            )
+          : null;
       if (!mounted) return;
       setState(() {
-        _allRecipes = [
+        _allRecipes = _mergeAllRecipes([
           ..._allRecipes,
-          ...result.items.map(RecipeItem.fromRecipe),
-        ];
-        _nextCursor = result.nextCursor;
-        _hasNext = result.hasNext;
+          ...?officialResult?.items.map(RecipeItem.fromRecipe),
+          ...?userResult?.items.map(RecipeItem.fromPendingJson),
+        ]);
+        if (officialResult != null) {
+          _nextCursor = officialResult.nextCursor;
+          _hasNext = officialResult.hasNext;
+        }
+        if (userResult != null) {
+          _nextUserRecipeCursor = userResult.nextCursor;
+          _hasNextUserRecipes = userResult.hasNext;
+        }
         _isLoadingMore = false;
       });
     } catch (e, st) {
@@ -140,6 +172,17 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
       if (!mounted) return;
       setState(() => _isLoadingMore = false);
     }
+  }
+
+  List<RecipeItem> _mergeAllRecipes(
+    Iterable<RecipeItem> recipes, [
+    Iterable<RecipeItem> userRecipes = const [],
+  ]) {
+    final merged = [...recipes, ...userRecipes];
+    if (_currentSort == SortType.latest) {
+      merged.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    }
+    return merged;
   }
 
   Future<void> _loadMyRecipes() async {
@@ -184,6 +227,14 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
         );
       } catch (e) {
         debugPrint('[RecipeBoard] getUserRecipe 실패: $e');
+      }
+    } else if (_tab == _Tab.all && !recipe.isOfficialRecipe) {
+      try {
+        detailRecipe = RecipeItem.fromPendingJson(
+          await NaengoApi.getApprovedUserRecipe(recipe.recipeId),
+        );
+      } catch (e) {
+        debugPrint('[RecipeBoard] getApprovedUserRecipe 실패: $e');
       }
     }
     if (!mounted) return;
@@ -531,7 +582,10 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
                   overflow: TextOverflow.ellipsis,
                 ),
                 SizedBox(height: 6.h),
-                _buildLikeBookmarkRow(recipe),
+                if (recipe.isOfficialRecipe)
+                  _buildLikeBookmarkRow(recipe)
+                else
+                  SizedBox(height: 22.h),
               ],
             ),
           ),

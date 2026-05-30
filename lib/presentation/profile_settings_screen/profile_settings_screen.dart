@@ -123,32 +123,103 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   // ── 로그아웃 / 탈퇴 ─────────────────────────────────────
 
   void _onLogout() {
+    const primary = Color(0xFFFF5252);
+    const tint = Color(0xFFFFF8F8);
+    const darkText = Color(0xFF1A1A1A);
+    const subText = Color(0xFF666666);
+
     showDialog(
       context: context,
+      barrierColor: Colors.black54,
       // dialogContext로 명시해 screen의 context를 shadowing하지 않도록 함.
       // 기존 코드는 dialog context로 Navigator.pushNamedAndRemoveUntil를 호출해
       // pop 후 무효화된 context를 참조하는 버그가 있었음.
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('로그아웃'),
-        content: const Text('로그아웃 하시겠어요?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('취소'),
+      builder: (dialogContext) => Dialog(
+        backgroundColor: tint,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 22, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                '로그아웃 하시겠어요?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: darkText,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                '현재 계정에서 로그아웃됩니다.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: subText,
+                  fontSize: 13,
+                  height: 1.4,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: primary,
+                        backgroundColor: Colors.white,
+                        side: const BorderSide(color: primary, width: 1.2),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      child: const Text(
+                        '취소',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      onPressed: () async {
+                        Navigator.of(dialogContext).pop(); // dialog 닫기
+                        await _auth.logout();
+                        if (!mounted) return;
+                        // screen context로 navigate (dialog context는 이미 무효)
+                        Navigator.of(context).pushNamedAndRemoveUntil(
+                          AppRoutes.mainShell,
+                          (route) => false,
+                        );
+                      },
+                      child: const Text(
+                        '로그아웃',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext); // dialog 닫기
-              await _auth.logout();
-              if (!mounted) return;
-              // screen context로 navigate (dialog context는 이미 무효)
-              Navigator.of(
-                context,
-              ).pushNamedAndRemoveUntil(AppRoutes.mainShell, (route) => false);
-            },
-            child: Text('로그아웃', style: TextStyle(color: appTheme.mainUI)),
-          ),
-        ],
+        ),
       ),
     );
   }
