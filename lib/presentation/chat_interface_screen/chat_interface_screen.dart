@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_export.dart';
@@ -34,7 +35,9 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
   late Animation<Offset> _panelSlideAnimation;
   late Animation<double> _overlayFadeAnimation;
 
+  static const double _kEdgeDragWidth = 44.0;
   bool _isPanelOpen = false;
+  bool _isEdgeDrag = false;
   bool _isLoading = false;
   bool _didInitialize = false;
   bool _titleUpdated = false;
@@ -131,6 +134,35 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
     _panelAnimationController.reverse().then((_) {
       if (mounted) setState(() => _isPanelOpen = false);
     });
+  }
+
+  void _onEdgeDragStart(DragStartDetails _) {
+    if (_isPanelOpen) return;
+    _isEdgeDrag = true;
+    setState(() => _isPanelOpen = true);
+    _panelAnimationController.value = 0.0;
+  }
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    final panelWidth = MediaQuery.of(context).size.width * 0.82;
+    final delta = details.delta.dx / panelWidth;
+    _panelAnimationController.value =
+        (_panelAnimationController.value + delta).clamp(0.0, 1.0);
+  }
+
+  void _onDragEnd(DragEndDetails details) {
+    if (_isEdgeDrag) {
+      _isEdgeDrag = false;
+      _openPanel();
+      return;
+    }
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity > 200 ||
+        (_panelAnimationController.value > 0.5 && velocity >= -200)) {
+      _openPanel();
+    } else {
+      _closePanel();
+    }
   }
 
   void _scrollToBottom() {
@@ -506,13 +538,30 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
             ),
           ),
 
-          // 딤 오버레이 — 탭하면 사이드바 닫힘 (회색 영역)
+          // 왼쪽 엣지 감지 영역 (항상 존재, 오버레이/패널 아래)
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: _kEdgeDragWidth,
+            child: GestureDetector(
+              onHorizontalDragStart: _onEdgeDragStart,
+              onHorizontalDragUpdate: _onDragUpdate,
+              onHorizontalDragEnd: _onDragEnd,
+              dragStartBehavior: DragStartBehavior.down,
+              behavior: HitTestBehavior.translucent,
+            ),
+          ),
+
+          // 딤 오버레이 — 탭 또는 좌측 스와이프로 닫기
           if (_isPanelOpen)
             AnimatedBuilder(
               animation: _overlayFadeAnimation,
               builder: (context, child) {
                 return GestureDetector(
                   onTap: _closePanel,
+                  onHorizontalDragUpdate: _onDragUpdate,
+                  onHorizontalDragEnd: _onDragEnd,
                   child: Container(
                     color: Colors.black.withValues(
                       alpha: _overlayFadeAnimation.value,
@@ -530,6 +579,8 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
                 alignment: Alignment.centerLeft,
                 child: GestureDetector(
                   onTap: () {}, // 패널 내부 빈 공간 탭 흡수
+                  onHorizontalDragUpdate: _onDragUpdate,
+                  onHorizontalDragEnd: _onDragEnd,
                   behavior: HitTestBehavior.opaque,
                   child: SizedBox(
                     width: MediaQuery.of(context).size.width * 0.82,
