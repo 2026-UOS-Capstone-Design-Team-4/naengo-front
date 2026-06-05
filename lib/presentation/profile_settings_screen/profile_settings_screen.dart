@@ -225,17 +225,128 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   }
 
   void _onDeleteAccount() {
+    const primary = Color(0xFFFF5252);
+    const tint = Color(0xFFFFF8F8);
+    const darkText = Color(0xFF1A1A1A);
+    const subText = Color(0xFF666666);
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        content: const Text('탈퇴 기능은 준비 중이에요.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('확인'),
+      barrierColor: Colors.black54,
+      builder: (dialogContext) {
+        bool isWithdrawing = false;
+        return StatefulBuilder(
+          builder: (_, setDialogState) => Dialog(
+            backgroundColor: tint,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 22, 20, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    '정말 탈퇴하시겠어요?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: darkText,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    '탈퇴하면 계정 정보와 채팅 내역이\n삭제되며 복구할 수 없어요.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: subText,
+                      fontSize: 13,
+                      height: 1.4,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: primary,
+                            backgroundColor: Colors.white,
+                            side: const BorderSide(color: primary, width: 1.2),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                          onPressed: isWithdrawing
+                              ? null
+                              : () => Navigator.of(dialogContext).pop(),
+                          child: const Text(
+                            '취소',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                          onPressed: isWithdrawing
+                              ? null
+                              : () async {
+                                  setDialogState(() => isWithdrawing = true);
+                                  try {
+                                    await _auth.withdraw();
+                                    if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                                    if (!mounted) return;
+                                    Navigator.of(context).pushNamedAndRemoveUntil(
+                                      AppRoutes.mainShell,
+                                      (route) => false,
+                                    );
+                                  } catch (e) {
+                                    setDialogState(() => isWithdrawing = false);
+                                    if (!mounted) return;
+                                    NaengoSnackBar.show(
+                                      context,
+                                      '탈퇴에 실패했어요. 다시 시도해주세요.',
+                                    );
+                                  }
+                                },
+                          child: isWithdrawing
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  '탈퇴하기',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

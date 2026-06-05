@@ -13,6 +13,7 @@ class RecipeItem {
   final String? sourceUrl;
   final String source;
   final int? authorId;
+  final String? authorNickname;
   final String status;
   final DateTime createdAt;
   final String? difficulty;
@@ -38,6 +39,7 @@ class RecipeItem {
     this.sourceUrl,
     this.source = 'ADMIN',
     this.authorId,
+    this.authorNickname,
     this.status = 'APPROVED',
     required this.createdAt,
     this.difficulty,
@@ -98,6 +100,7 @@ class RecipeItem {
         sourceUrl: j['source_url'] as String?,
         source: 'USER',
         authorId: j['user_id'] as int?,
+        authorNickname: (j['user'] as Map?)?['nickname'] as String?,
         status: j['status'] as String? ?? 'PENDING',
         createdAt: DateTime.parse(j['created_at'] as String),
         difficulty: j['difficulty'] as String?,

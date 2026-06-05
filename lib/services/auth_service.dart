@@ -40,8 +40,9 @@ abstract class AuthService {
   /// 회원가입 (LOCAL 계정 전용).
   Future<AppUser> signup(String email, String password, String nickname);
 
-  /// 로그아웃 — 서버 쿠키 만료 요청 + 로컬 상태 초기화.
   Future<void> logout();
+
+  Future<void> withdraw();
 }
 
 /// 현재 앱 전역에서 사용할 AuthService 인스턴스.
@@ -226,11 +227,30 @@ class RealAuthService implements AuthService {
     _userInput = await NaengoApi.getProfileInput();
   }
 
-  // ── 로그아웃 ────────────────────────────────────────────
+  // ── 로그아웃 / 탈퇴 ────────────────────────────────────
 
   @override
   Future<void> logout() async {
-    await NaengoApi.postLogout(); // 서버에 로그아웃 알림
+    await NaengoApi.postLogout();
+    _user = null;
+    _token = null;
+    _userInput = [];
+    ChatStore.clear();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tokenKey);
+  }
+
+  @override
+  Future<void> withdraw() async {
+    await NaengoApi.withdrawAccount();
+    final hasKakao = _user?.userIdentities.any((i) => i.provider == 'KAKAO') ?? false;
+    if (hasKakao) {
+      try {
+        await UserApi.instance.unlink();
+      } catch (e) {
+        debugPrint('[Withdraw] Kakao unlink 실패: $e');
+      }
+    }
     _user = null;
     _token = null;
     _userInput = [];

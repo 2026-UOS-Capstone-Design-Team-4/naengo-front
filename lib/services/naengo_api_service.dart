@@ -141,6 +141,19 @@ class NaengoApi {
     }
   }
 
+  static Future<void> withdrawAccount() async {
+    final uri = Uri.parse('$_authBase/api/v1/users/me');
+    final r = await http.delete(uri, headers: _authHeaders());
+    if (r.statusCode != 204) {
+      String code = 'WITHDRAW_FAILED';
+      try {
+        final body = jsonDecode(utf8.decode(r.bodyBytes)) as Map<String, dynamic>;
+        code = ((body['error'] as Map?)?['code'] as String?) ?? code;
+      } catch (_) {}
+      throw HttpException(code, uri: uri);
+    }
+  }
+
   /// 인증이 필요한 API 호출에 쓸 헤더.
   /// 로그인 상태면 Authorization 헤더가 자동으로 붙음.
   static Map<String, String> _authHeaders() => {

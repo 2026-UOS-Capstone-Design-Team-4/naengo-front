@@ -452,7 +452,7 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
                 crossAxisCount: 2,
                 crossAxisSpacing: 10.h,
                 mainAxisSpacing: 10.h,
-                mainAxisExtent: 202.h,
+                mainAxisExtent: 214.h,
               ),
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
@@ -559,34 +559,53 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
                     ),
             ),
           ),
-          Padding(
-            padding: EdgeInsets.all(10.h),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  recipe.title,
-                  style: TextStyleHelper.instance.body15BoldNanumSquareAc
-                      .copyWith(fontSize: 13.fSize),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: 3.h),
-                Text(
-                  recipe.ingredientsRaw,
-                  style: TextStyle(
-                    fontSize: 11.fSize,
-                    color: appTheme.disabled,
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.all(10.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        recipe.title,
+                        style: TextStyleHelper.instance.body15BoldNanumSquareAc
+                            .copyWith(fontSize: 13.fSize),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 2.h),
+                      if (recipe.authorNickname != null)
+                        Text(
+                          recipe.authorNickname!,
+                          style: TextStyle(
+                            fontSize: 11.fSize,
+                            color: appTheme.basis,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      SizedBox(height: 3.h),
+                      Text(
+                        recipe.ingredientsRaw,
+                        style: TextStyle(
+                          fontSize: 11.fSize,
+                          color: appTheme.disabled,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: 6.h),
-                if (recipe.isOfficialRecipe)
-                  _buildLikeBookmarkRow(recipe)
-                else
-                  SizedBox(height: 22.h),
-              ],
+                  if (recipe.isOfficialRecipe)
+                    _buildLikeBookmarkRow(recipe)
+                  else
+                    const SizedBox.shrink(),
+                ],
+              ),
             ),
           ),
         ],
