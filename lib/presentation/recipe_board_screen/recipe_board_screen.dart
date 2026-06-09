@@ -546,7 +546,32 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
               height: 110.h,
               width: double.infinity,
               child: recipe.imageUrl != null
-                  ? Image.network(recipe.imageUrl!, fit: BoxFit.cover)
+                  ? Image.network(
+                      recipe.imageUrl!,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, c, progress) {
+                        if (progress == null) return c;
+                        return Container(
+                          color: appTheme.lightbasis,
+                          child: const Center(
+                              child: CircularProgressIndicator(strokeWidth: 2)),
+                        );
+                      },
+                      errorBuilder: (context, error, stack) {
+                        debugPrint(
+                            '[BoardCard] 이미지 로드 실패: ${recipe.imageUrl}\n$error');
+                        return Container(
+                          color: appTheme.lightbasis,
+                          child: Center(
+                            child: Icon(
+                              Icons.broken_image_outlined,
+                              size: 48.h,
+                              color: appTheme.mainUI.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        );
+                      },
+                    )
                   : Container(
                       color: appTheme.lightbasis,
                       child: Center(
@@ -748,28 +773,40 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
   }
 
   Widget _buildThumbnail(String? imageUrl) {
+    final placeholderIcon = Center(
+      child: Icon(
+        Icons.restaurant_rounded,
+        size: 32.h,
+        color: Colors.white.withValues(alpha: 0.7),
+      ),
+    );
+
     Widget child;
-    if (imageUrl != null && imageUrl.startsWith('data:')) {
-      // base64 data URL → Image.memory 사용 불가 (String이라 직접 decode 필요)
-      // 이미지 업로드 엔드포인트 구현 전까지 기본 아이콘 표시
-      child = Center(
-        child: Icon(
-          Icons.restaurant_rounded,
-          size: 32.h,
-          color: Colors.white.withValues(alpha: 0.7),
-        ),
-      );
-    } else if (imageUrl != null) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      child = placeholderIcon;
+    } else if (imageUrl.startsWith('data:')) {
+      // base64 data URL은 현재 미지원 — 기본 아이콘 표시
+      child = placeholderIcon;
+    } else {
       child = ClipRRect(
         borderRadius: BorderRadius.circular(10.h),
-        child: Image.network(imageUrl, fit: BoxFit.cover),
-      );
-    } else {
-      child = Center(
-        child: Icon(
-          Icons.restaurant_rounded,
-          size: 32.h,
-          color: Colors.white.withValues(alpha: 0.7),
+        child: Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          loadingBuilder: (context, c, progress) {
+            if (progress == null) return c;
+            return Center(
+              child: SizedBox(
+                width: 18.h,
+                height: 18.h,
+                child: const CircularProgressIndicator(strokeWidth: 2),
+              ),
+            );
+          },
+          errorBuilder: (context, error, stack) {
+            debugPrint('[Thumbnail] 이미지 로드 실패: $imageUrl\n$error');
+            return placeholderIcon;
+          },
         ),
       );
     }

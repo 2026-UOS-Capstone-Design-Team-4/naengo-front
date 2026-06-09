@@ -1,6 +1,6 @@
 name: fridge_expert
 description: A new Flutter project.
-version: 1.0.4+5
+version: 1.0.5+6
 environment:
   sdk: ^3.9.0
 dependencies:

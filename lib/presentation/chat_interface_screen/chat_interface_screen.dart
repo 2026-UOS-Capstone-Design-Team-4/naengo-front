@@ -350,8 +350,12 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
     setState(() => _isLoading = true);
     try {
       final history = await NaengoApi.getRoomHistory(roomId);
+      // 서버가 어떤 순서로 응답하든 항상 시간 오름차순(오래된 → 최신)으로
+      // 정렬해 화면 하단이 가장 최신이 되도록 보정.
+      final sorted = [...history]
+        ..sort((a, b) => a.sentAt.compareTo(b.sentAt));
       if (!mounted) return;
-      ChatStore.replaceMessages(_currentRoom.roomId, history);
+      ChatStore.replaceMessages(_currentRoom.roomId, sorted);
       // replaceMessages 가 새 List 인스턴스를 만들므로 참조를 다시 받아야 함.
       _messages = ChatStore.getMessages(_currentRoom.roomId);
       setState(() => _isLoading = false);
@@ -765,11 +769,7 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
                     onTap: () => _showFullImage(message.imagePath!),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
-                      child: Image.file(
-                        File(message.imagePath!),
-                        width: 220.h,
-                        fit: BoxFit.cover,
-                      ),
+                      child: _buildChatImage(message.imagePath!),
                     ),
                   ),
                   if (message.hasText) SizedBox(height: 6.h),
@@ -1103,8 +1103,46 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
     return buf.toString().trimRight();
   }
 
+  /// 채팅 메시지 안에 표시할 이미지 위젯.
+  /// - `http(s)://` 로 시작하면 서버에서 받아온 URL → `Image.network`
+  /// - 그 외(로컬 파일 경로)는 디바이스에 방금 찍은 사진 → `Image.file`
+  Widget _buildChatImage(String pathOrUrl) {
+    final isNetwork =
+        pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://');
+    if (isNetwork) {
+      return Image.network(
+        pathOrUrl,
+        width: 220.h,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          return Container(
+            width: 220.h,
+            height: 220.h,
+            color: appTheme.lightbasis,
+            child: const Center(child: CircularProgressIndicator()),
+          );
+        },
+        errorBuilder: (context, error, stack) => Container(
+          width: 220.h,
+          height: 100.h,
+          color: appTheme.lightbasis,
+          child: Icon(Icons.broken_image_outlined, color: appTheme.disabled),
+        ),
+      );
+    }
+    return Image.file(
+      File(pathOrUrl),
+      width: 220.h,
+      fit: BoxFit.cover,
+    );
+  }
+
   /// 채팅에서 이미지 탭 시 전체화면으로 펼쳐 보기 (핀치 줌 가능).
-  void _showFullImage(String path) {
+  /// 로컬 파일과 네트워크 URL 모두 지원.
+  void _showFullImage(String pathOrUrl) {
+    final isNetwork =
+        pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://');
     showDialog(
       context: context,
       barrierColor: Colors.black87,
@@ -1114,7 +1152,9 @@ class _ChatInterfaceScreenState extends State<ChatInterfaceScreen>
         child: GestureDetector(
           onTap: () => Navigator.of(ctx).pop(),
           child: InteractiveViewer(
-            child: Image.file(File(path), fit: BoxFit.contain),
+            child: isNetwork
+                ? Image.network(pathOrUrl, fit: BoxFit.contain)
+                : Image.file(File(pathOrUrl), fit: BoxFit.contain),
           ),
         ),
       ),

@@ -240,8 +240,7 @@ class NaengoApi {
   /// 시간순(오래된 것 → 최신)으로 반환됨.
   ///
   /// AI 응답에 레시피가 첨부됐었다면 `ChatMessage.recipes` 가 채워짐.
-  /// ⚠️ 백엔드는 `content` 텍스트만 저장하므로 사용자가 과거에 보낸 이미지는 복원되지 않음
-  ///    (현재 v1 제약, 추후 백엔드가 image_url 컬럼 추가하면 매핑 가능).
+  /// 사용자가 첨부했던 이미지는 백엔드 `image_url` 필드로 복원됨 (S3 URL).
   static Future<List<ChatMessage>> getRoomHistory(int roomId) async {
     final uri = Uri.parse('$baseUrl/api/v1/chat/rooms/$roomId');
     final r = await http.get(uri, headers: _authHeaders());
@@ -293,6 +292,7 @@ class NaengoApi {
       text: j['content'] as String? ?? '',
       isMe: role == 'user',
       sentAt: DateTime.parse(j['created_at'] as String),
+      imagePath: j['image_url'] as String?,
       recipes: recipesJson
           ?.map((r) => Recipe.fromJson((r as Map).cast<String, dynamic>()))
           .toList(growable: false),
