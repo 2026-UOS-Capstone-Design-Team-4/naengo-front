@@ -468,12 +468,12 @@ class NaengoApi {
           'Bearer ${AuthServiceLocator.instance.token}';
     }
     request.fields['payload'] = jsonEncode(payload);
-    // 스토리지 설정 후 이미지 업로드 활성화
-    // if (mainImage != null) {
-    //   request.files.add(
-    //     await http.MultipartFile.fromPath('main_image', mainImage.path),
-    //   );
-    // }
+    // S3 도입 완료. main_image 멀티파트 파일 첨부.
+    if (mainImage != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath('main_image', mainImage.path),
+      );
+    }
     final streamed = await request.send();
     final r = await http.Response.fromStream(streamed);
     if (r.statusCode != 201) {
