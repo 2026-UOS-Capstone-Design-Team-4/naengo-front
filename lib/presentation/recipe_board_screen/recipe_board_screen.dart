@@ -152,11 +152,14 @@ class _RecipeBoardScreenState extends State<RecipeBoardScreen>
           : null;
       if (!mounted) return;
       setState(() {
-        _allRecipes = _mergeAllRecipes([
-          ..._allRecipes,
+        final newItems = [
           ...?officialResult?.items.map(RecipeItem.fromRecipe),
           ...?userResult?.items.map(RecipeItem.fromPendingJson),
-        ]);
+        ];
+        if (_currentSort == SortType.latest) {
+          newItems.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        }
+        _allRecipes = [..._allRecipes, ...newItems];
         if (officialResult != null) {
           _nextCursor = officialResult.nextCursor;
           _hasNext = officialResult.hasNext;
